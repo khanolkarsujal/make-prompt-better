@@ -1,6 +1,12 @@
 from fastapi import FastAPI
+from backend.routes.generate import router  as generate_router
 
 app = FastAPI()
+title="Vibe Prompt Engine API",
+description="API for generating content based on prompts using AI",
+version="1.0.0",
+
+app.include_router(generate_router, prefix="/api")
 
 @app.get("/")
 def home():
