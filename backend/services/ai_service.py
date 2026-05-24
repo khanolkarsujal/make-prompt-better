@@ -10,7 +10,7 @@ if settings.AI_PROVIDER == "xai":
         base_url="https://api.x.ai/v1",
         api_key=settings.XAI_API_KEY
     )
-    model_name = "grok-beta"
+    model_name = "grok-2-preview"
 else:
     client = Anthropic(api_key=settings.ANTHROPIC_API_KEY)
     model_name = "claude-3-5-sonnet-20240620"

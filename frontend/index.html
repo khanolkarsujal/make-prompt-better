@@ -1,17 +1,1027 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Make a prompt better</title>
-    <script src="script.js" defer></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vibe Prompt Engine – Full Pipeline Overview</title>
+  <meta name="description" content="From User Input to AI Response with Intelligent Prompt Orchestration" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    /* ===================== BASE ===================== */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #0a0a18;
+      color: #e0e0ff;
+      min-height: 100vh;
+      padding: 32px 24px 48px;
+    }
+
+    /* ===================== PAGE HEADER ===================== */
+    .page-header {
+      text-align: center;
+      margin-bottom: 36px;
+    }
+    .page-title {
+      font-size: clamp(20px, 3vw, 30px);
+      font-weight: 900;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: #ffffff;
+      margin-bottom: 8px;
+    }
+    .page-subtitle {
+      font-size: 13px;
+      color: #7a7aaa;
+      letter-spacing: 0.02em;
+    }
+
+    /* ===================== TOP PIPELINE ROW ===================== */
+    .pipeline-row {
+      display: flex;
+      align-items: stretch;
+      gap: 0;
+      margin-bottom: 24px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+    }
+
+    .step-arrow {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 6px;
+      flex-shrink: 0;
+    }
+    .step-arrow svg { opacity: 0.5; }
+
+    /* ===================== STEP CARD ===================== */
+    .step-card {
+      border: 1px solid;
+      border-radius: 10px;
+      padding: 14px 13px 13px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      min-width: 175px;
+      flex: 1;
+      background: rgba(255,255,255,0.025);
+      transition: background 0.2s;
+    }
+    .step-card:hover { background: rgba(255,255,255,0.045); }
+
+    /* Step colours matching the diagram */
+    .step-card.s1  { border-color: #3a3aff; }
+    .step-card.s2  { border-color: #1a8cff; }
+    .step-card.s3  { border-color: #00cc88; }
+    .step-card.s4  { border-color: #00cc88; }
+    .step-card.s5  { border-color: #1a8cff; }
+    .step-card.s6  { border-color: #a855f7; }
+    .step-card.s7  { border-color: #a855f7; }
+
+    .step-header {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+    .step-num {
+      font-size: 11px;
+      font-weight: 800;
+      width: 20px; height: 20px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      color: #fff;
+    }
+    .s1 .step-num  { background: #3a3aff; }
+    .s2 .step-num  { background: #1a8cff; }
+    .s3 .step-num  { background: #00cc88; }
+    .s4 .step-num  { background: #00cc88; }
+    .s5 .step-num  { background: #1a8cff; }
+    .s6 .step-num  { background: #a855f7; }
+    .s7 .step-num  { background: #a855f7; }
+
+    .step-title {
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #fff;
+    }
+    .step-desc {
+      font-size: 10.5px;
+      color: #8888bb;
+      line-height: 1.5;
+    }
+
+    /* ---- sub-panel inside a step card ---- */
+    .sub-panel {
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 6px;
+      padding: 8px 10px;
+      background: rgba(0,0,0,0.3);
+      flex: 1;
+    }
+    .sub-panel-title {
+      font-size: 9.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 7px;
+      padding: 2px 7px;
+      border-radius: 3px;
+      display: inline-block;
+    }
+
+    /* step 1 – ai input bar */
+    .ai-bar {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 5px;
+      padding: 6px 8px;
+      margin-bottom: 8px;
+    }
+    .ai-bar-text {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: #aaaaee;
+      flex: 1;
+    }
+    .ai-bar-btn {
+      background: #3a3aff;
+      border: none;
+      border-radius: 3px;
+      color: #fff;
+      font-size: 12px;
+      width: 22px; height: 22px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+    .dev-user {
+      text-align: center;
+      font-size: 10px;
+      color: #5555aa;
+      margin-top: 4px;
+    }
+    .dev-icon {
+      font-size: 22px;
+      display: block;
+      text-align: center;
+      margin-bottom: 2px;
+      filter: grayscale(0.3);
+    }
+
+    /* step 2 – vscode */
+    .vscode-badge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 6px;
+    }
+    .vscode-icon { font-size: 18px; }
+    .vscode-label { font-size: 11px; font-weight: 600; color: #64b5f6; }
+    .interceptor-item {
+      background: rgba(26,140,255,0.1);
+      border: 1px solid rgba(26,140,255,0.25);
+      border-radius: 4px;
+      padding: 4px 8px;
+      font-size: 10px;
+      color: #90caf9;
+      margin-bottom: 4px;
+    }
+    .captured-box {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 4px;
+      padding: 5px 8px;
+      font-size: 10px;
+      color: #7a7aaa;
+      margin-top: 4px;
+    }
+    .captured-box span { color: #aaaaee; font-family: 'JetBrains Mono', monospace; }
+
+    /* step 3 – backend api */
+    .s3 .sub-panel-title { background: rgba(0,204,136,0.15); color: #00cc88; }
+    .api-item {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding: 5px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      font-size: 10.5px;
+      color: #aaaacc;
+    }
+    .api-item:last-child { border-bottom: none; }
+    .api-item-icon {
+      width: 22px; height: 22px;
+      border-radius: 50%;
+      background: rgba(0,204,136,0.15);
+      border: 1px solid rgba(0,204,136,0.3);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 10px;
+      flex-shrink: 0;
+    }
+
+    /* step 4 – suggestion engine */
+    .s4 .sub-panel-title { background: rgba(0,204,136,0.15); color: #00cc88; }
+    .suggestion-q {
+      font-size: 10px;
+      font-weight: 600;
+      color: #ccccee;
+      margin-bottom: 4px;
+      margin-top: 6px;
+    }
+    .suggestion-opts {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      margin-bottom: 2px;
+    }
+    .suggestion-opt {
+      font-size: 9.5px;
+      color: #8888aa;
+      padding-left: 10px;
+      position: relative;
+    }
+    .suggestion-opt::before {
+      content: '•';
+      position: absolute;
+      left: 2px;
+      color: #00cc88;
+    }
+
+    /* step 5 – user selection */
+    .s5 .sub-panel-title { background: rgba(26,140,255,0.15); color: #64b5f6; }
+    .select-row {
+      margin-bottom: 7px;
+    }
+    .select-label { font-size: 9.5px; color: #7a7aaa; margin-bottom: 3px; }
+    .select-box {
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(26,140,255,0.4);
+      border-radius: 4px;
+      padding: 5px 8px;
+      font-size: 10px;
+      color: #90caf9;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .select-box::after { content: '▾'; opacity: 0.6; font-size: 9px; }
+    .continue-btn-mock {
+      width: 100%;
+      background: #1a8cff;
+      border: none;
+      border-radius: 4px;
+      color: #fff;
+      font-size: 10.5px;
+      font-weight: 700;
+      padding: 6px;
+      text-align: center;
+      cursor: pointer;
+      margin-top: 8px;
+      font-family: 'Inter', sans-serif;
+    }
+
+    /* step 6 – prompt builder */
+    .s6 .sub-panel-title { background: rgba(168,85,247,0.15); color: #c084fc; }
+    .checklist-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 10px;
+      color: #aaaacc;
+      padding: 2px 0;
+    }
+    .check-icon { color: #00cc88; font-size: 10px; flex-shrink: 0; }
+
+    /* step 7 – final prompt */
+    .s7 .sub-panel-title { background: rgba(168,85,247,0.15); color: #c084fc; }
+    .final-prompt-box {
+      background: rgba(0,0,0,0.4);
+      border: 1px solid rgba(168,85,247,0.25);
+      border-radius: 4px;
+      padding: 7px 9px;
+      font-size: 9.5px;
+      font-family: 'JetBrains Mono', monospace;
+      color: #ccccee;
+      line-height: 1.6;
+    }
+    .final-prompt-box .fp-title { color: #c084fc; font-weight: 600; font-size: 10px; margin-bottom: 4px; }
+    .final-include { font-size: 9px; color: #8888aa; margin-top: 5px; }
+    .final-include-items {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2px;
+      margin-top: 3px;
+    }
+    .fi-item { font-size: 9px; color: #9999cc; }
+    .fi-item::before { content: '✓ '; color: #00cc88; }
+
+    /* ===================== BOTTOM ROW ===================== */
+    .bottom-row {
+      display: grid;
+      grid-template-columns: 260px 1fr 220px;
+      gap: 18px;
+      margin-bottom: 20px;
+    }
+
+    /* ---- Extension Sidebar ---- */
+    .ext-sidebar-section {
+      border: 1px solid #333366;
+      border-radius: 10px;
+      padding: 14px;
+      background: rgba(255,255,255,0.02);
+    }
+    .ext-sidebar-section-title {
+      font-size: 9.5px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: #5555aa;
+      margin-bottom: 12px;
+      text-align: center;
+    }
+    .ext-sidebar-mock {
+      border: 1px solid rgba(26,140,255,0.3);
+      border-radius: 8px;
+      overflow: hidden;
+      background: #0d0d1e;
+    }
+    .ext-sidebar-header {
+      background: rgba(26,140,255,0.1);
+      padding: 7px 10px;
+      font-size: 11px;
+      font-weight: 700;
+      color: #64b5f6;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      border-bottom: 1px solid rgba(26,140,255,0.2);
+    }
+    .ext-sidebar-body { padding: 10px; }
+    .ext-step-row {
+      margin-bottom: 9px;
+    }
+    .ext-step-label {
+      font-size: 9px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #5555aa;
+      margin-bottom: 3px;
+    }
+    .ext-step-value {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 4px;
+      padding: 5px 8px;
+      font-size: 10.5px;
+      color: #aaaadd;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .ext-step-badge {
+      background: rgba(26,140,255,0.1);
+      border: 1px solid rgba(26,140,255,0.25);
+      border-radius: 4px;
+      padding: 5px 8px;
+      font-size: 10px;
+      color: #64b5f6;
+    }
+    .ext-step-ready {
+      background: rgba(0,204,136,0.1);
+      border: 1px solid rgba(0,204,136,0.25);
+      border-radius: 4px;
+      padding: 5px 8px;
+      font-size: 10px;
+      color: #00cc88;
+    }
+    .ext-sidebar-btns {
+      display: flex;
+      gap: 6px;
+      margin-top: 10px;
+    }
+    .ext-btn {
+      flex: 1;
+      border: none;
+      border-radius: 4px;
+      padding: 6px;
+      font-size: 10px;
+      font-weight: 600;
+      font-family: 'Inter', sans-serif;
+      cursor: pointer;
+      text-align: center;
+    }
+    .ext-btn-copy { background: rgba(255,255,255,0.1); color: #ccccee; border: 1px solid rgba(255,255,255,0.15); }
+    .ext-btn-send { background: #1a8cff; color: #fff; }
+
+    /* Nav items */
+    .ext-nav-items {
+      margin-top: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 1px;
+    }
+    .ext-nav-item {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding: 5px 7px;
+      border-radius: 4px;
+      font-size: 10.5px;
+      color: #7777aa;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .ext-nav-item:hover { background: rgba(255,255,255,0.05); color: #aaaadd; }
+    .ext-nav-icon { font-size: 12px; }
+
+    /* ---- Steps 8-10 (middle bottom) ---- */
+    .steps-8-10 {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .step-8-10-card {
+      flex: 1;
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 10px;
+      padding: 14px 12px;
+      background: rgba(255,255,255,0.025);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .step-8-10-header {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+    .step-8-10-num {
+      font-size: 10px;
+      font-weight: 800;
+      width: 18px; height: 18px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.1);
+      display: flex; align-items: center; justify-content: center;
+      color: #aaaadd;
+      flex-shrink: 0;
+    }
+    .step-8-10-title {
+      font-size: 10.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #ccccee;
+    }
+    .step-8-10-desc { font-size: 10px; color: #666699; line-height: 1.4; }
+
+    /* AI tools logos */
+    .ai-tools-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      justify-content: center;
+      margin-top: 4px;
+    }
+    .ai-tool-badge {
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      border: 1px solid rgba(255,255,255,0.15);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px;
+      background: rgba(255,255,255,0.05);
+    }
+
+    /* Code snippet */
+    .code-snippet {
+      background: #0d0d1e;
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 5px;
+      padding: 7px 9px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 9px;
+      color: #8888bb;
+      line-height: 1.7;
+    }
+    .code-snippet .kw { color: #c084fc; }
+    .code-snippet .fn { color: #64b5f6; }
+    .code-snippet .str { color: #00cc88; }
+    .code-snippet .tag { color: #f97316; }
+
+    /* Output in editor */
+    .editor-output {
+      background: #0d0d1e;
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 5px;
+      padding: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .editor-line {
+      background: rgba(0,204,136,0.07);
+      border-radius: 3px;
+      height: 7px;
+      width: 100%;
+    }
+    .editor-line:nth-child(2) { width: 80%; }
+    .editor-line:nth-child(3) { width: 90%; background: rgba(168,85,247,0.07); }
+    .editor-line:nth-child(4) { width: 65%; }
+    .editor-check {
+      text-align: center;
+      font-size: 22px;
+      margin-top: 4px;
+    }
+
+    .bottom-arr {
+      display: flex;
+      align-items: center;
+      color: rgba(255,255,255,0.2);
+      font-size: 20px;
+      flex-shrink: 0;
+    }
+
+    /* ---- Right info column ---- */
+    .info-column {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    /* ===================== BOTTOM INFO SECTIONS ===================== */
+    .bottom-section {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr 1fr;
+      gap: 16px;
+    }
+
+    .info-box {
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 10px;
+      padding: 14px 14px;
+      background: rgba(255,255,255,0.02);
+    }
+
+    .info-box-title {
+      font-size: 10px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: #5555aa;
+      margin-bottom: 10px;
+      text-align: center;
+    }
+
+    /* tech stack */
+    .tech-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 0 10px; }
+    .tech-col-title {
+      font-size: 9.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #7777aa;
+      margin-bottom: 5px;
+      padding-bottom: 3px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    .tech-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 10px;
+      color: #9999cc;
+      padding: 2.5px 0;
+    }
+    .tech-dot { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; }
+    .dot-js  { background: #f7df1e; }
+    .dot-py  { background: #4b8bbe; }
+    .dot-vs  { background: #0078d4; }
+    .dot-node{ background: #5fa04e; }
+    .dot-fast{ background: #009688; }
+    .dot-pd  { background: #e92063; }
+    .dot-uv  { background: #7c6ff7; }
+
+    /* ai models */
+    .ai-models-logos {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+    .ai-logo {
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      border: 1px solid rgba(255,255,255,0.12);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+      background: rgba(255,255,255,0.04);
+    }
+    .ai-models-label {
+      font-size: 9.5px;
+      color: #666699;
+      text-align: center;
+      line-height: 1.5;
+    }
+
+    /* data flow */
+    .flow-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 6px;
+      font-size: 10px;
+      color: #8888aa;
+      padding: 2.5px 0;
+    }
+    .flow-num {
+      width: 14px; height: 14px;
+      border-radius: 50%;
+      background: rgba(26,140,255,0.15);
+      color: #64b5f6;
+      font-size: 8px;
+      font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
+    /* key benefits */
+    .benefit-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 5px;
+      font-size: 10px;
+      color: #9999cc;
+      padding: 3px 0;
+    }
+    .benefit-check { color: #00cc88; flex-shrink: 0; font-size: 11px; }
+    .info-box.benefits { border-color: rgba(0,204,136,0.25); background: rgba(0,204,136,0.03); }
+    .info-box.benefits .info-box-title { color: #00cc88; }
+  </style>
 </head>
 <body>
 
-    <h1>Make a prompt better</h1>
+  <!-- ========================== PAGE HEADER ========================== -->
+  <div class="page-header">
+    <div class="page-title">Vibe Prompt Engine – Full Pipeline Overview</div>
+    <div class="page-subtitle">From User Input to AI Response with Intelligent Prompt Orchestration</div>
+  </div>
+
+  <!-- ========================== TOP: 7-STEP PIPELINE ========================== -->
+  <div class="pipeline-row">
+
+    <!-- STEP 1: USER INPUT -->
+    <div class="step-card s1">
+      <div class="step-header">
+        <div class="step-num">1</div>
+        <div class="step-title">User Input</div>
+      </div>
+      <div class="step-desc">User types a command / idea in the AI input bar</div>
+      <div class="sub-panel">
+        <div class="ai-bar">
+          <span class="ai-bar-text">make dashboard</span>
+          <button class="ai-bar-btn">›</button>
+        </div>
+        <span class="dev-icon">👤</span>
+        <div class="dev-user">Developer / User</div>
+      </div>
+    </div>
+
+    <div class="step-arrow">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 7h10M8 3l4 4-4 4" stroke="#5555aa" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </div>
+
+    <!-- STEP 2: INTERCEPT & CAPTURE -->
+    <div class="step-card s2">
+      <div class="step-header">
+        <div class="step-num">2</div>
+        <div class="step-title">Intercept &amp; Capture</div>
+      </div>
+      <div class="step-desc">Extension intercepts the prompt before it is sent to the AI tool</div>
+      <div class="sub-panel">
+        <div class="vscode-badge">
+          <span class="vscode-icon">💙</span>
+          <span class="vscode-label">VS Code Extension</span>
+        </div>
+        <div class="interceptor-item">🔌 Prompt Interceptor</div>
+        <div class="captured-box">Captured Prompt:<br/><span>"make dashboard"</span></div>
+      </div>
+    </div>
+
+    <div class="step-arrow">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 7h10M8 3l4 4-4 4" stroke="#5555aa" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </div>
+
+    <!-- STEP 3: INTENT ANALYSIS -->
+    <div class="step-card s3">
+      <div class="step-header">
+        <div class="step-num">3</div>
+        <div class="step-title">Intent Analysis</div>
+      </div>
+      <div class="step-desc">The prompt is sent to the backend for analysis</div>
+      <div class="sub-panel">
+        <div class="sub-panel-title">Backend API</div>
+        <div class="api-item">
+          <div class="api-item-icon">🧠</div>
+          Intent Analyzer
+        </div>
+        <div class="api-item">
+          <div class="api-item-icon">🔎</div>
+          Context Detector
+        </div>
+        <div class="api-item">
+          <div class="api-item-icon">❓</div>
+          Ambiguity Detector
+        </div>
+      </div>
+    </div>
+
+    <div class="step-arrow">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 7h10M8 3l4 4-4 4" stroke="#5555aa" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </div>
+
+    <!-- STEP 4: SUGGESTION ENGINE -->
+    <div class="step-card s4">
+      <div class="step-header">
+        <div class="step-num">4</div>
+        <div class="step-title">Suggestion Engine</div>
+      </div>
+      <div class="step-desc">Backend returns clarifying questions / options</div>
+      <div class="sub-panel">
+        <div class="sub-panel-title">Backend API Response</div>
+        <div style="font-size:9.5px;color:#666699;margin-bottom:2px;font-weight:600;">Questions &amp; Options</div>
+        <div class="suggestion-q">1. What type of dashboard?</div>
+        <div class="suggestion-opts">
+          <div class="suggestion-opt">Admin Dashboard</div>
+          <div class="suggestion-opt">Analytics Dashboard</div>
+          <div class="suggestion-opt">Finance Dashboard</div>
+          <div class="suggestion-opt">CRM Dashboard</div>
+        </div>
+        <div class="suggestion-q">2. Choose Tech Stack?</div>
+        <div class="suggestion-opts">
+          <div class="suggestion-opt">React + Tailwind</div>
+          <div class="suggestion-opt">Next.js</div>
+          <div class="suggestion-opt">Vue.js</div>
+          <div class="suggestion-opt">Other</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="step-arrow">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 7h10M8 3l4 4-4 4" stroke="#5555aa" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </div>
+
+    <!-- STEP 5: USER SELECTION -->
+    <div class="step-card s5">
+      <div class="step-header">
+        <div class="step-num">5</div>
+        <div class="step-title">User Selection</div>
+      </div>
+      <div class="step-desc">Extension shows options to the user who selects the required choices</div>
+      <div class="sub-panel">
+        <div class="sub-panel-title">VS Code Extension UI</div>
+        <div class="select-row">
+          <div class="select-label">Select Dashboard Type</div>
+          <div class="select-box">Analytics Dashboard</div>
+        </div>
+        <div class="select-row">
+          <div class="select-label">Select Tech Stack</div>
+          <div class="select-box">React + Tailwind</div>
+        </div>
+        <button class="continue-btn-mock">Continue</button>
+      </div>
+    </div>
+
+    <div class="step-arrow">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 7h10M8 3l4 4-4 4" stroke="#5555aa" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </div>
+
+    <!-- STEP 6: PROMPT BUILDER -->
+    <div class="step-card s6">
+      <div class="step-header">
+        <div class="step-num">6</div>
+        <div class="step-title">Prompt Builder</div>
+      </div>
+      <div class="step-desc">Backend builds the final enhanced prompt using user choices + context</div>
+      <div class="sub-panel">
+        <div class="sub-panel-title">Backend API</div>
+        <div style="font-size:10px;color:#9999bb;margin-bottom:6px;font-weight:600;">Enhance with:</div>
+        <div class="checklist-item"><span class="check-icon">✓</span> User Choices</div>
+        <div class="checklist-item"><span class="check-icon">✓</span> Project Context</div>
+        <div class="checklist-item"><span class="check-icon">✓</span> Best Practices</div>
+        <div class="checklist-item"><span class="check-icon">✓</span> Structure &amp; Details</div>
+        <div class="checklist-item"><span class="check-icon">✓</span> Dark Mode</div>
+        <div class="checklist-item"><span class="check-icon">✓</span> Data Table</div>
+        <div class="checklist-item"><span class="check-icon">✓</span> Recent Activity</div>
+        <div class="checklist-item" style="color:#5555aa"><span style="color:#5555aa">✓</span> …and more</div>
+      </div>
+    </div>
+
+    <div class="step-arrow">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 7h10M8 3l4 4-4 4" stroke="#5555aa" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </div>
+
+    <!-- STEP 7: FINAL PROMPT -->
+    <div class="step-card s7">
+      <div class="step-header">
+        <div class="step-num">7</div>
+        <div class="step-title">Final Prompt</div>
+      </div>
+      <div class="step-desc">The final optimized prompt is returned to the extension</div>
+      <div class="sub-panel">
+        <div class="sub-panel-title">Final Optimized Prompt</div>
+        <div class="final-prompt-box">
+          <div class="fp-title">Create a modern analytics dashboard using React and Tailwind CSS.</div>
+          Include:
+          <div class="final-include-items">
+            <div class="fi-item">Sidebar</div>
+            <div class="fi-item">Charts</div>
+            <div class="fi-item">KPI Cards</div>
+            <div class="fi-item">Responsive</div>
+            <div class="fi-item">Dark Mode</div>
+            <div class="fi-item">Data Table</div>
+            <div class="fi-item">Activity</div>
+            <div class="fi-item">…more</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- end pipeline-row -->
 
 
-    <input type="text" id="promptInput" placeholder="Enter the prompt here" >
-    
+  <!-- ========================== BOTTOM ROW ========================== -->
+  <div class="bottom-row">
+
+    <!-- LEFT: Extension Sidebar Workflow -->
+    <div class="ext-sidebar-section">
+      <div class="ext-sidebar-section-title">Extension Sidebar Workflow (Optional UI)</div>
+      <div class="ext-sidebar-mock">
+        <div class="ext-sidebar-header">
+          <span>⚡</span> Vibe Prompt Engine
+        </div>
+        <div class="ext-sidebar-body">
+          <div class="ext-step-row">
+            <div class="ext-step-label">1 Raw Prompt</div>
+            <div class="ext-step-value">make dashboard</div>
+          </div>
+          <div class="ext-step-row">
+            <div class="ext-step-label">2 Suggestions</div>
+            <div class="ext-step-badge">Answer a few questions</div>
+          </div>
+          <div class="ext-step-row">
+            <div class="ext-step-label">3 Final Prompt</div>
+            <div class="ext-step-ready">Ready to send</div>
+          </div>
+          <div class="ext-sidebar-btns">
+            <button class="ext-btn ext-btn-copy">📋 Copy Prompt</button>
+            <button class="ext-btn ext-btn-send">🚀 Send to AI Tool</button>
+          </div>
+        </div>
+      </div>
+      <div class="ext-nav-items">
+        <div class="ext-nav-item"><span class="ext-nav-icon">🕐</span> Prompt History <span style="margin-left:auto;font-size:9px;opacity:0.4">View all your previous prompts</span></div>
+        <div class="ext-nav-item"><span class="ext-nav-icon">⭐</span> Favorites <span style="margin-left:auto;font-size:9px;opacity:0.4">Save your best prompts</span></div>
+        <div class="ext-nav-item"><span class="ext-nav-icon">📄</span> Templates <span style="margin-left:auto;font-size:9px;opacity:0.4">Use pre-built prompt templates</span></div>
+        <div class="ext-nav-item"><span class="ext-nav-icon">🔍</span> Project Context <span style="margin-left:auto;font-size:9px;opacity:0.4">Auto-detect your project stack</span></div>
+        <div class="ext-nav-item"><span class="ext-nav-icon">⚙️</span> Settings <span style="margin-left:auto;font-size:9px;opacity:0.4">Configure your preferences</span></div>
+      </div>
+    </div>
+
+    <!-- MIDDLE: Steps 8 → 9 → 10 -->
+    <div class="steps-8-10">
+
+      <!-- Step 10: Result in Editor (shown first on left per diagram) -->
+      <div class="step-8-10-card">
+        <div class="step-8-10-header">
+          <div class="step-8-10-num">10</div>
+          <div class="step-8-10-title">Result in Editor</div>
+        </div>
+        <div class="step-8-10-desc">The result appears in the AI tool / editor</div>
+        <div style="font-size:9.5px;color:#5555aa;margin-top:2px;font-weight:600;">Output in Editor</div>
+        <div class="editor-output">
+          <div class="editor-line"></div>
+          <div class="editor-line"></div>
+          <div class="editor-line"></div>
+          <div class="editor-line"></div>
+          <div class="editor-check">✅</div>
+        </div>
+      </div>
+
+      <div class="bottom-arr">‹</div>
+
+      <!-- Step 9: AI Generates Output -->
+      <div class="step-8-10-card">
+        <div class="step-8-10-header">
+          <div class="step-8-10-num">9</div>
+          <div class="step-8-10-title">AI Generates Output</div>
+        </div>
+        <div class="step-8-10-desc">AI tool generates the response / code</div>
+        <div style="font-size:9.5px;color:#5555aa;margin-top:2px;font-weight:600;">AI Generated Output</div>
+        <div class="code-snippet">
+          <span class="kw">import</span> React <span class="kw">from</span> <span class="str">'react'</span><br/>
+          <br/>
+          <span class="kw">return</span> (<br/>
+          &nbsp;&nbsp;<span class="tag">&lt;div</span> <span class="fn">className</span>=<span class="str">"dashboard"</span><span class="tag">&gt;</span><br/>
+          &nbsp;&nbsp;&nbsp;&nbsp;<span class="tag">&lt;Charts /&gt;</span><br/>
+          &nbsp;&nbsp;&nbsp;&nbsp;<span class="tag">&lt;Sidebar /&gt;</span><br/>
+          &nbsp;&nbsp;&nbsp;&nbsp;<span class="tag">&lt;KPICards /&gt;</span><br/>
+          &nbsp;&nbsp;<span class="tag">&lt;/div&gt;</span><br/>
+          )
+        </div>
+      </div>
+
+      <div class="bottom-arr">‹</div>
+
+      <!-- Step 8: Send to AI Tool -->
+      <div class="step-8-10-card">
+        <div class="step-8-10-header">
+          <div class="step-8-10-num">8</div>
+          <div class="step-8-10-title">Send to AI Tool</div>
+        </div>
+        <div class="step-8-10-desc">User sends the final prompt to the AI coding tool</div>
+        <div style="font-size:9.5px;color:#5555aa;margin-top:2px;font-weight:600;">AI Tool (Cursor / Copilot / Claude)</div>
+        <div class="ai-tools-row">
+          <div class="ai-tool-badge" title="Cursor">🖱️</div>
+          <div class="ai-tool-badge" title="GitHub Copilot">🤖</div>
+          <div class="ai-tool-badge" title="Claude">✳️</div>
+        </div>
+        <div style="font-size:9px;color:#5555aa;text-align:center;margin-top:6px;">Final Prompt is sent<br/>by the user</div>
+      </div>
+
+    </div><!-- end steps-8-10 -->
+
+  </div><!-- end bottom-row -->
+
+
+  <!-- ========================== BOTTOM INFO SECTIONS ========================== -->
+  <div class="bottom-section">
+
+    <!-- Tech Stack -->
+    <div class="info-box">
+      <div class="info-box-title">Tech Stack</div>
+      <div class="tech-cols">
+        <div>
+          <div class="tech-col-title">Extension</div>
+          <div class="tech-item"><div class="tech-dot dot-js"></div> JavaScript</div>
+          <div class="tech-item"><div class="tech-dot dot-vs"></div> VS Code API</div>
+          <div class="tech-item"><div class="tech-dot" style="background:#9a7fdb"></div> Webview / QuickPick</div>
+          <div class="tech-item"><div class="tech-dot dot-node"></div> Node.js</div>
+        </div>
+        <div>
+          <div class="tech-col-title">Backend</div>
+          <div class="tech-item"><div class="tech-dot dot-fast"></div> FastAPI</div>
+          <div class="tech-item"><div class="tech-dot dot-pd"></div> Pydantic</div>
+          <div class="tech-item"><div class="tech-dot dot-uv"></div> Uvicorn</div>
+          <div class="tech-item"><div class="tech-dot dot-py"></div> Python 3.10+</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- AI Models -->
+    <div class="info-box">
+      <div class="info-box-title">AI Models</div>
+      <div class="ai-models-logos">
+        <div class="ai-logo" title="OpenAI">🤖</div>
+        <div class="ai-logo" title="Gemini">✨</div>
+        <div class="ai-logo" title="Anthropic Claude">✳️</div>
+      </div>
+      <div class="ai-models-label">OpenAI / Gemini / Claude /<br/>DeepSeek / Other Models</div>
+    </div>
+
+    <!-- Data Flow Summary -->
+    <div class="info-box">
+      <div class="info-box-title">Data Flow Summary</div>
+      <div class="flow-item"><div class="flow-num">1</div>User types a command in the AI input bar</div>
+      <div class="flow-item"><div class="flow-num">2</div>Extension intercepts the prompt</div>
+      <div class="flow-item"><div class="flow-num">3</div>Backend analyzes intent and detects missing details</div>
+      <div class="flow-item"><div class="flow-num">4</div>Backend returns questions / suggestions</div>
+      <div class="flow-item"><div class="flow-num">5</div>User selects the appropriate options</div>
+      <div class="flow-item"><div class="flow-num">6</div>Backend builds the final optimized prompt</div>
+      <div class="flow-item"><div class="flow-num">7</div>Final prompt is returned to the extension</div>
+      <div class="flow-item"><div class="flow-num">8</div>User sends final prompt to AI tool</div>
+      <div class="flow-item"><div class="flow-num">9</div>AI tool generates the output</div>
+      <div class="flow-item"><div class="flow-num">10</div>Output is shown in the editor</div>
+    </div>
+
+    <!-- Key Benefits -->
+    <div class="info-box benefits">
+      <div class="info-box-title">Key Benefits</div>
+      <div class="benefit-item"><span class="benefit-check">✓</span> Better AI responses</div>
+      <div class="benefit-item"><span class="benefit-check">✓</span> Less back-and-forth</div>
+      <div class="benefit-item"><span class="benefit-check">✓</span> Saves time</div>
+      <div class="benefit-item"><span class="benefit-check">✓</span> Smart suggestions</div>
+      <div class="benefit-item"><span class="benefit-check">✓</span> Context-aware prompts</div>
+      <div class="benefit-item"><span class="benefit-check">✓</span> Consistent, high-quality results</div>
+    </div>
+
+  </div><!-- end bottom-section -->
+
 </body>
 </html>

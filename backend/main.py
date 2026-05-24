@@ -7,6 +7,8 @@ load_dotenv()
 
 from core.config import settings
 from routes.generate import router as generate_router
+from routes.history import router as history_router
+from routes.templates import router as templates_router
 
 app = FastAPI(title="Vibe Prompt Engine", version="1.0.0")
 
@@ -19,6 +21,8 @@ app.add_middleware(
 )
 
 app.include_router(generate_router, prefix="/api", tags=["generate"])
+app.include_router(history_router, prefix="/api", tags=["history"])
+app.include_router(templates_router, prefix="/api", tags=["templates"])
 
 @app.get("/")
 async def root():
