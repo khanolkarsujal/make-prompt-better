@@ -1,24 +1,25 @@
 from fastapi import FastAPI
-from backend.routes.generate import router  as generate_router
+from fastapi.middleware.cors import CORSMiddleware
+from dotenv import load_dotenv
+import os
 
-app = FastAPI()
-title="Vibe Prompt Engine API",
-description="API for generating content based on prompts using AI",
-version="1.0.0",
+load_dotenv()
 
-app.include_router(generate_router, prefix="/api")
+from core.config import settings
+from routes.generate import router as generate_router
+
+app = FastAPI(title="Vibe Prompt Engine", version="1.0.0")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+app.include_router(generate_router, prefix="/api", tags=["generate"])
 
 @app.get("/")
-def home():
-    return {"message": "Hello, World!"}
-
-@app.get("/health")
-def health_check():
-    return {"status": "OK"}
-
-
-@app.post("/generate")
-def generate_content(prompt: str):
-    return {
-        "response": " Ai output here"
-    }
+async def root():
+    return {"message": "Vibe Prompt Engine Backend is running ✨"}
