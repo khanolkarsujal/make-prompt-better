@@ -1,6 +1,6 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
+
+<html lang="en"><head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
 <title>Vibe Prompt Engine | Kinetic Precision</title>
@@ -83,21 +83,13 @@
 
     /* Custom Field Styles */
     .field-container {
-        position: relative;
-        transition: all 300ms;
+        @apply relative transition-all duration-300;
     }
     .field-container:hover .field-glow {
         opacity: 1;
     }
     .field-glow {
-        position: absolute;
-        inset: -0.125rem;
-        background-color: rgba(240, 98, 96, 0.05);
-        border-radius: 0.75rem;
-        filter: blur(0.375rem);
-        opacity: 0;
-        transition: opacity 300ms;
-        pointer-events: none;
+        @apply absolute -inset-0.5 bg-kinetic-red/5 rounded-xl blur-md opacity-0 transition-opacity duration-300 pointer-events-none;
     }
 
     /* Select specific */
@@ -237,7 +229,7 @@
 <span class="text-[9px] px-1.5 py-0.5 rounded bg-zinc-100/50 text-zinc-500 font-bold uppercase tracking-tighter mono-data" id="char-count">ch 0</span>
 </div>
 </div>
-<button class="w-full mt-6 bg-kinetic-red text-white py-4 rounded-lg text-xs font-black uppercase tracking-[0.15em] hover:bg-kinetic-red-hover hover-lift active:scale-[0.98] transition-all shadow-lg shadow-red-100/50 flex items-center justify-center group/btn" id="analyze-btn">
+<button class="w-full mt-6 bg-kinetic-red text-white py-4 rounded-lg text-xs font-black uppercase tracking-[0.15em] hover:bg-kinetic-red-hover hover-lift active:scale-[0.98] transition-all shadow-lg shadow-red-100/50 flex items-center justify-center group/btn">
 <span>Analyze Intent</span>
 <span class="material-symbols-outlined ml-2 text-sm group-hover/btn:translate-x-1 transition-transform">arrow_forward</span>
 </button>
@@ -245,7 +237,7 @@
 </div>
 </section>
 <!-- Step 02: USER SELECTION -->
-<section class="space-y-5 reveal-section" data-purpose="step-2" id="selection-section" style="display: none;">
+<section class="space-y-5 reveal-section" data-purpose="step-2">
 <div class="flex items-center space-x-4">
 <span class="flex items-center justify-center bg-zinc-900 text-white font-bold rounded-lg shadow-sm w-12 h-12 text-lg">02</span>
 <div>
@@ -266,8 +258,61 @@
 <div class="flex items-center space-x-2"><span class="text-kinetic-red text-[11px] font-black uppercase tracking-widest font-sans">CONFIGURING: DASHBOARD SYSTEM</span><span class="text-[10px] font-bold text-zinc-300 mono-data">#4412</span></div>
 <div class="flex items-center bg-zinc-50 border border-zinc-100 px-3 py-1 rounded-full space-x-2"><span class="w-1 h-1 bg-green-500 rounded-full animate-pulse"></span><span class="text-[9px] font-black text-zinc-500 uppercase tracking-tighter mono-data">Context-Aware</span></div>
 </div>
-<div id="questions-container" class="grid grid-cols-1 gap-6 sm:grid-cols-2">
-<!-- Dynamic questions will be inserted here -->
+<div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
+<!-- Data Source -->
+<div class="space-y-2.5">
+<label class="block text-[10px] font-black text-zinc-400 uppercase tracking-[0.15em] flex items-center font-sans">
+<span class="w-1 h-1 bg-zinc-300 rounded-full mr-2"></span>DATA SOURCE
+              </label>
+<div class="field-container group custom-select-trigger">
+<div class="field-glow"></div>
+<div class="input-precision flex items-center bg-zinc-50/50 hover:border-kinetic-red/30 relative z-10">
+<span class="material-symbols-outlined ml-4 text-zinc-400 group-focus-within:text-kinetic-red transition-colors text-lg">database</span>
+<select class="w-full bg-transparent border-none text-xs py-3.5 pl-3 pr-10 font-bold mono-data text-zinc-900 appearance-none cursor-pointer focus:ring-0">
+<option class="font-sans">SQL Database</option>
+<option class="font-sans">REST API</option>
+<option class="font-sans">CSV / Static Data</option>
+</select>
+<span class="material-symbols-outlined absolute right-4 text-zinc-400 chevron-icon transition-transform duration-300 pointer-events-none text-lg">expand_more</span>
+</div>
+</div>
+</div>
+<!-- Widget Presets -->
+<div class="space-y-2.5">
+<label class="block text-[10px] font-black text-zinc-400 uppercase tracking-[0.15em] flex items-center font-sans">
+<span class="w-1 h-1 bg-zinc-300 rounded-full mr-2"></span>WIDGET PRESETS
+              </label>
+<div class="field-container group custom-select-trigger">
+<div class="field-glow"></div>
+<div class="input-precision flex items-center bg-zinc-50/50 hover:border-kinetic-red/30 relative z-10">
+<span class="material-symbols-outlined ml-4 text-zinc-400 group-focus-within:text-kinetic-red transition-colors text-lg">dashboard_customize</span>
+<select class="w-full bg-transparent border-none text-xs py-3.5 pl-3 pr-10 font-bold mono-data text-zinc-900 appearance-none cursor-pointer focus:ring-0">
+<option class="font-sans">Analytics Dashboard</option>
+<option class="font-sans">CRM View</option>
+<option class="font-sans">Inventory Control</option>
+</select>
+<span class="material-symbols-outlined absolute right-4 text-zinc-400 chevron-icon transition-transform duration-300 pointer-events-none text-lg">expand_more</span>
+</div>
+</div>
+</div>
+<!-- Styling Approach -->
+<div class="space-y-2.5 sm:col-span-2">
+<label class="block text-[10px] font-black text-zinc-400 uppercase tracking-[0.15em] flex items-center font-sans">
+<span class="w-1 h-1 bg-zinc-300 rounded-full mr-2"></span>STYLING APPROACH
+              </label>
+<div class="field-container group custom-select-trigger">
+<div class="field-glow"></div>
+<div class="input-precision flex items-center bg-zinc-50/50 hover:border-kinetic-red/30 relative z-10">
+<span class="material-symbols-outlined ml-4 text-zinc-400 group-focus-within:text-kinetic-red transition-colors text-lg">palette</span>
+<select class="w-full bg-transparent border-none text-xs py-3.5 pl-3 pr-10 font-bold mono-data text-zinc-900 appearance-none cursor-pointer focus:ring-0">
+<option class="font-sans">shadcn/ui</option>
+<option class="font-sans">Tailwind CSS</option>
+<option class="font-sans">Vanilla CSS</option>
+</select>
+<span class="material-symbols-outlined absolute right-4 text-zinc-400 chevron-icon transition-transform duration-300 pointer-events-none text-lg">expand_more</span>
+</div>
+</div>
+</div>
 </div>
 <button class="w-full bg-zinc-900 text-white py-4 rounded-lg text-xs font-black uppercase tracking-[0.2em] hover:bg-kinetic-red hover:shadow-glow-red hover-lift transition-all duration-300 active:scale-[0.98] shadow-xl shadow-zinc-200 mt-4 flex items-center justify-center" id="compile-trigger">
 <span class="material-symbols-outlined mr-2 text-sm">settings_suggest</span>
@@ -276,7 +321,7 @@
 </div>
 </section>
 <!-- Step 03: FINAL PROMPT -->
-<section class="space-y-5 pb-8 reveal-section" data-purpose="step-3" id="final-section" style="display: none;">
+<section class="space-y-5 pb-8 reveal-section" data-purpose="step-3">
 <div class="flex items-center space-x-4">
 <span class="flex items-center justify-center bg-zinc-900 text-white font-bold rounded-lg shadow-sm w-12 h-12 text-lg">03</span>
 <div>
@@ -325,7 +370,7 @@
 <div class="hidden w-full mono-data text-[12px] text-zinc-300" id="terminal-result">
 <div class="text-kinetic-red mb-2 font-bold">[SUCCESS] COMPILATION COMPLETE</div>
 <p class="leading-relaxed" id="typed-result"></p>
-<button class="mt-6 flex items-center justify-center p-3 rounded-full bg-white/5 border border-white/10 hover:bg-kinetic-red hover:text-white transition-all text-zinc-400 self-center mx-auto hover-lift group/send" id="copy-btn">
+<button class="mt-6 flex items-center justify-center p-3 rounded-full bg-white/5 border border-white/10 hover:bg-kinetic-red hover:text-white transition-all text-zinc-400 self-center mx-auto hover-lift group/send">
 <span class="material-symbols-outlined text-2xl group-hover:scale-110 transition-transform">send_and_archive</span>
 </button>
 </div>
@@ -353,5 +398,99 @@
 </div>
 </footer>
 </div>
-<script src="script.js"></script>
+<script>
+    // 1. Typing Animation for Initial Input
+    const textarea = document.getElementById('prompt-textarea');
+    const charCountDisplay = document.getElementById('char-count');
+    const initialText = "build a high-performance dashboard with real-time charts and adaptive user profiling...";
+    
+    function typeText(target, text, speed = 40) {
+      let index = 0;
+      target.value = "";
+      const timer = setInterval(() => {
+        if (index < text.length) {
+          target.value += text.charAt(index);
+          index++;
+          charCountDisplay.textContent = `ch ${index}`;
+          // Auto-scroll to bottom as we type
+          target.scrollTop = target.scrollHeight;
+        } else {
+          clearInterval(timer);
+        }
+      }, speed);
+    }
+
+    // 2. Intersection Observer for Reveal Animations
+    const observerOptions = {
+      threshold: 0.1,
+      rootMargin: "0px 0px -50px 0px"
+    };
+
+    const revealObserver = new IntersectionObserver((entries) => {
+      entries.forEach((entry, idx) => {
+        if (entry.isIntersecting) {
+          // Add visible class with a slight staggered delay based on index if needed, 
+          // or just rely on the CSS transition
+          setTimeout(() => {
+            entry.target.classList.add('visible');
+            // Trigger typing if it's the first section
+            if (entry.target.dataset.purpose === 'step-1' && !entry.target.dataset.typed) {
+              entry.target.dataset.typed = "true";
+              setTimeout(() => typeText(textarea, initialText), 600);
+            }
+          }, idx * 150);
+        }
+      });
+    }, observerOptions);
+
+    document.querySelectorAll('.reveal-section').forEach(section => revealObserver.observe(section));
+
+    // 3. Prompt Generation Loading States
+    const compileBtn = document.getElementById('compile-trigger');
+    const terminalIdle = document.getElementById('terminal-idle');
+    const terminalCompiling = document.getElementById('terminal-compiling');
+    const terminalResult = document.getElementById('terminal-result');
+    const terminalStatus = document.getElementById('terminal-status');
+    const typedResult = document.getElementById('typed-result');
+
+    const resultPrompt = "GENERATE_DASHBOARD_CORE --engine v4 --source SQL_DB --preset ANALYTICS --style SHADCN --optimize LATENCY --enable REALTIME_SYSTRAY";
+
+    compileBtn.addEventListener('click', () => {
+      // Switch states
+      terminalIdle.classList.add('hidden');
+      terminalCompiling.classList.remove('hidden');
+      terminalStatus.textContent = "STDOUT: COMPILING...";
+      
+      // Simulate compilation
+      setTimeout(() => {
+        terminalCompiling.classList.add('hidden');
+        terminalResult.classList.remove('hidden');
+        terminalStatus.textContent = "STDOUT: TRANSMITTING";
+        
+        // Type out the final prompt
+        let i = 0;
+        const typeResult = setInterval(() => {
+          if (i < resultPrompt.length) {
+            typedResult.textContent += resultPrompt.charAt(i);
+            i++;
+          } else {
+            clearInterval(typeResult);
+            terminalStatus.textContent = "STDOUT: READY";
+          }
+        }, 20);
+      }, 2500);
+    });
+
+    // 4. Mouse Tracking Spotlight
+    const spotlight = document.getElementById('spotlight');
+    window.addEventListener('mousemove', (e) => {
+      spotlight.style.setProperty('--x', `${e.clientX}px`);
+      spotlight.style.setProperty('--y', `${e.clientY}px`);
+    });
+
+    // Update char count on manual input
+    textarea.addEventListener('input', (e) => {
+      charCountDisplay.textContent = `ch ${e.target.value.length}`;
+    });
+  </script>
 </body></html>

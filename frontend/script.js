@@ -1,37 +1,304 @@
 /* =====================================================
-   Vibe Prompt Engine – Frontend State Machine
+   Vibe Prompt Engine – Kinetic Precision UI
    ===================================================== */
 
 // ---- Config ----
-let API_URL = localStorage.getItem('vpe_backend_url') || 'http://localhost:8000/api';
-let AI_PROVIDER = localStorage.getItem('vpe_ai_provider') || 'xai';
+const API_URL = 'http://localhost:8000/api';
 
 // ---- Global State ----
-let currentStep = 1;
 let currentPrompt = '';
 let currentAnalysis = null;
 let selections = {};
-let totalQuestions = 0;
 let currentEnhancedPrompt = '';
-let projectContext = JSON.parse(localStorage.getItem('vpe_context') || '{}');
 
 // ---- Init ----
 document.addEventListener('DOMContentLoaded', () => {
-  loadSettings();
-  loadContextForm();
-  checkBackendStatus();
-  loadTemplates();
-  renderHistory();
-  renderFavorites();
-  activatePipelineStep(1);
-
-  // Show context chip if context is saved
-  if (projectContext.projectName || projectContext.techStack) {
-    document.getElementById('contextChipRow').style.display = 'block';
-    document.getElementById('contextChip').textContent =
-      `🔍 ${projectContext.projectName || 'Project'} · ${projectContext.techStack || ''}`;
-  }
+  setupRevealAnimations();
+  setupSpotlight();
+  setupEventListeners();
 });
+
+// =====================================================
+//  UI ANIMATIONS
+// =====================================================
+function setupRevealAnimations() {
+  const observerOptions = {
+    threshold: 0.1,
+    rootMargin: "0px 0px -50px 0px"
+  };
+
+  const revealObserver = new IntersectionObserver((entries) => {
+    entries.forEach((entry, idx) => {
+      if (entry.isIntersecting) {
+        setTimeout(() => {
+          entry.target.classList.add('visible');
+        }, idx * 150);
+      }
+    });
+  }, observerOptions);
+
+  document.querySelectorAll('.reveal-section').forEach(section => revealObserver.observe(section));
+}
+
+function setupSpotlight() {
+  const spotlight = document.getElementById('spotlight');
+  window.addEventListener('mousemove', (e) => {
+    spotlight.style.setProperty('--x', `${e.clientX}px`);
+    spotlight.style.setProperty('--y', `${e.clientY}px`);
+  });
+}
+
+function setupEventListeners() {
+  // Analyze button
+  const analyzeBtn = document.getElementById('analyze-btn');
+  if (analyzeBtn) {
+    analyzeBtn.addEventListener('click', handleAnalyze);
+  }
+
+  // Compile/Continue button
+  const compileBtn = document.getElementById('compile-trigger');
+  if (compileBtn) {
+    compileBtn.addEventListener('click', handleBuild);
+  }
+
+  // Copy button
+  const copyBtn = document.getElementById('copy-btn');
+  if (copyBtn) {
+    copyBtn.addEventListener('click', handleCopy);
+  }
+
+  // Character count
+  const textarea = document.getElementById('prompt-textarea');
+  const charCount = document.getElementById('char-count');
+  if (textarea && charCount) {
+    textarea.addEventListener('input', (e) => {
+      charCount.textContent = `ch ${e.target.value.length}`;
+    });
+  }
+}
+
+// =====================================================
+//  STEP 1: ANALYZE PROMPT
+// =====================================================
+async function handleAnalyze() {
+  const textarea = document.getElementById('prompt-textarea');
+  const prompt = textarea.value.trim();
+  
+  if (!prompt) {
+    alert('Please enter a prompt first.');
+    return;
+  }
+
+  currentPrompt = prompt;
+  selections = {};
+
+  // Show loading state
+  const analyzeBtn = document.getElementById('analyze-btn');
+  analyzeBtn.disabled = true;
+  analyzeBtn.innerHTML = '<span class="material-symbols-outlined animate-spin">refresh</span> Analyzing...';
+
+  try {
+    const response = await fetch(`${API_URL}/analyze`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt })
+    });
+
+    if (!response.ok) throw new Error(`Server error: ${response.status}`);
+
+    currentAnalysis = await response.json();
+
+    // Show selection section
+    const selectionSection = document.getElementById('selection-section');
+    selectionSection.style.display = 'block';
+    selectionSection.classList.add('visible');
+
+    // Render questions
+    renderQuestions(currentAnalysis.suggestions.questions);
+
+    // Scroll to selection section
+    selectionSection.scrollIntoView({ behavior: 'smooth' });
+
+  } catch (err) {
+    console.error('Analysis error:', err);
+    alert(`Error: ${err.message}`);
+  } finally {
+    analyzeBtn.disabled = false;
+    analyzeBtn.innerHTML = '<span>Analyze Intent</span><span class="material-symbols-outlined ml-2 text-sm group-hover/btn:translate-x-1 transition-transform">arrow_forward</span>';
+  }
+}
+
+// =====================================================
+//  STEP 2: RENDER QUESTIONS
+// =====================================================
+function renderQuestions(questions) {
+  const container = document.getElementById('questions-container');
+  container.innerHTML = '';
+
+  questions.forEach((q, idx) => {
+    const questionDiv = document.createElement('div');
+    questionDiv.className = 'space-y-2.5';
+    
+    // Create label
+    const label = document.createElement('label');
+    label.className = 'block text-[10px] font-black text-zinc-400 uppercase tracking-[0.15em] flex items-center font-sans';
+    label.innerHTML = `<span class="w-1 h-1 bg-zinc-300 rounded-full mr-2"></span>${q.question}`;
+    
+    // Create select field
+    const fieldContainer = document.createElement('div');
+    fieldContainer.className = 'field-container group custom-select-trigger';
+    
+    const fieldGlow = document.createElement('div');
+    fieldGlow.className = 'field-glow';
+    
+    const inputPrecision = document.createElement('div');
+    inputPrecision.className = 'input-precision flex items-center bg-zinc-50/50 hover:border-kinetic-red/30 relative z-10';
+    
+    // Icon based on category
+    let icon = 'help';
+    if (q.category === 'tech_stack') icon = 'code';
+    else if (q.category === 'features') icon = 'widgets';
+    else if (q.category === 'design') icon = 'palette';
+    
+    inputPrecision.innerHTML = `
+      <span class="material-symbols-outlined ml-4 text-zinc-400 group-focus-within:text-kinetic-red transition-colors text-lg">${icon}</span>
+      <select class="w-full bg-transparent border-none text-xs py-3.5 pl-3 pr-10 font-bold mono-data text-zinc-900 appearance-none cursor-pointer focus:ring-0" data-question="${idx}">
+        ${q.options.map(opt => `<option class="font-sans">${opt}</option>`).join('')}
+      </select>
+      <span class="material-symbols-outlined absolute right-4 text-zinc-400 chevron-icon transition-transform duration-300 pointer-events-none text-lg">expand_more</span>
+    `;
+    
+    fieldContainer.appendChild(fieldGlow);
+    fieldContainer.appendChild(inputPrecision);
+    
+    questionDiv.appendChild(label);
+    questionDiv.appendChild(fieldContainer);
+    
+    container.appendChild(questionDiv);
+  });
+
+  // Add event listeners to selects
+  container.querySelectorAll('select').forEach(select => {
+    select.addEventListener('change', (e) => {
+      const qIdx = parseInt(e.target.dataset.question);
+      const question = questions[qIdx];
+      selections[question.question] = e.target.value;
+    });
+  });
+}
+
+// =====================================================
+//  STEP 3: BUILD ENHANCED PROMPT
+// =====================================================
+async function handleBuild() {
+  // Check if all questions are answered
+  const questions = currentAnalysis.suggestions.questions;
+  const answeredCount = Object.keys(selections).length;
+  
+  if (answeredCount < questions.length) {
+    alert(`Please answer all questions (${answeredCount}/${questions.length} answered)`);
+    return;
+  }
+
+  // Show final section
+  const finalSection = document.getElementById('final-section');
+  finalSection.style.display = 'block';
+  finalSection.classList.add('visible');
+
+  // Scroll to final section
+  finalSection.scrollIntoView({ behavior: 'smooth' });
+
+  // Show compiling state
+  const terminalIdle = document.getElementById('terminal-idle');
+  const terminalCompiling = document.getElementById('terminal-compiling');
+  const terminalResult = document.getElementById('terminal-result');
+  const terminalStatus = document.getElementById('terminal-status');
+
+  terminalIdle.classList.add('hidden');
+  terminalCompiling.classList.remove('hidden');
+  terminalStatus.textContent = "STDOUT: COMPILING...";
+
+  try {
+    const response = await fetch(`${API_URL}/build`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        prompt: currentPrompt,
+        selections,
+        intent: currentAnalysis.intent,
+        context: currentAnalysis.context
+      })
+    });
+
+    if (!response.ok) throw new Error(`Server error: ${response.status}`);
+
+    const result = await response.json();
+    currentEnhancedPrompt = result.enhanced_prompt;
+
+    // Simulate compilation delay for effect
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    // Show result
+    terminalCompiling.classList.add('hidden');
+    terminalResult.classList.remove('hidden');
+    terminalStatus.textContent = "STDOUT: TRANSMITTING";
+
+    // Type out the result
+    const typedResult = document.getElementById('typed-result');
+    typeText(typedResult, currentEnhancedPrompt, 15);
+
+    await new Promise(resolve => setTimeout(resolve, currentEnhancedPrompt.length * 15 + 500));
+
+    terminalStatus.textContent = "STDOUT: READY";
+
+  } catch (err) {
+    console.error('Build error:', err);
+    alert(`Error: ${err.message}`);
+    terminalCompiling.classList.add('hidden');
+    terminalIdle.classList.remove('hidden');
+    terminalStatus.textContent = "STDOUT: ERROR";
+  }
+}
+
+// =====================================================
+//  TYPE TEXT ANIMATION
+// =====================================================
+function typeText(element, text, speed = 15) {
+  let index = 0;
+  element.textContent = '';
+  
+  const timer = setInterval(() => {
+    if (index < text.length) {
+      element.textContent += text.charAt(index);
+      index++;
+    } else {
+      clearInterval(timer);
+    }
+  }, speed);
+}
+
+// =====================================================
+//  COPY TO CLIPBOARD
+// =====================================================
+async function handleCopy() {
+  if (!currentEnhancedPrompt) return;
+  
+  try {
+    await navigator.clipboard.writeText(currentEnhancedPrompt);
+    
+    const copyBtn = document.getElementById('copy-btn');
+    const originalHTML = copyBtn.innerHTML;
+    copyBtn.innerHTML = '<span class="material-symbols-outlined text-2xl">check</span>';
+    
+    setTimeout(() => {
+      copyBtn.innerHTML = originalHTML;
+    }, 2000);
+    
+  } catch (err) {
+    console.error('Copy error:', err);
+    alert('Failed to copy to clipboard');
+  }
+}
 
 // =====================================================
 //  BACKEND STATUS CHECK
