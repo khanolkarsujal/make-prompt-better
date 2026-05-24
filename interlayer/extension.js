@@ -60,6 +60,7 @@ async function handleWebviewMessage(msg, context) {
 
     case 'saveSettings':
       context.globalState.update('vibeBackendUrl', msg.backendUrl);
+      context.globalState.update('vibeTheme', msg.theme);
       vscode.window.showInformationMessage('Vibe: Settings saved!');
       break;
 
@@ -325,6 +326,8 @@ async function detectProjectContext() {
 //  SIDEBAR WEBVIEW HTML
 // =====================================================
 function getSidebarHtml(context) {
+  const theme = context.globalState.get('vibeTheme') || 'light';
+
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -332,419 +335,682 @@ function getSidebarHtml(context) {
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Vibe Prompt Engine</title>
   <style>
-    /* VS Code specific resets and fonts */
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    /* ── Kinetic Precision Design System ── */
+    :root {
+      --red:        #f06260;
+      --red-hover:  #d95351;
+      --red-glow:   rgba(240,98,96,0.12);
+      --bg:         #fafafa;
+      --surface:    #ffffff;
+      --surface-2:  #f4f4f5;
+      --border:     #e4e4e7;
+      --text:       #18181b;
+      --text-muted: #71717a;
+      --text-dim:   #a1a1aa;
+      --mono:       'JetBrains Mono', 'Fira Code', Consolas, monospace;
+      --sans:       -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    }
+    body.forced-dark {
+      --bg:         #09090b;
+      --surface:    #18181b;
+      --surface-2:  #27272a;
+      --border:     #3f3f46;
+      --text:       #fafafa;
+      --text-muted: #a1a1aa;
+      --text-dim:   #71717a;
+      --red-glow:   rgba(240,98,96,0.18);
+    }
+    body.vscode-light  { /* already light */ }
+    body.vscode-dark   {
+      --bg:         #09090b;
+      --surface:    #18181b;
+      --surface-2:  #27272a;
+      --border:     #3f3f46;
+      --text:       #fafafa;
+      --text-muted: #a1a1aa;
+      --text-dim:   #71717a;
+      --red-glow:   rgba(240,98,96,0.18);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+
     body {
-      font-family: var(--vscode-font-family, 'Inter', sans-serif);
-      background: var(--vscode-editor-background, #0d0d1e);
-      color: var(--vscode-foreground, #ccccee);
-      font-size: 13px;
+      font-family: var(--sans);
+      background: var(--bg);
+      color: var(--text);
+      font-size: 12px;
+      line-height: 1.5;
       height: 100vh;
       display: flex;
       flex-direction: column;
       overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
     }
 
-    /* Core Palette matching the diagram */
-    :root {
-      --bg-dark: #0d0d1e;
-      --blue-bg: rgba(26, 140, 255, 0.1);
-      --blue-border: rgba(26, 140, 255, 0.25);
-      --blue-text: #64b5f6;
-      --green-bg: rgba(0, 204, 136, 0.1);
-      --green-border: rgba(0, 204, 136, 0.25);
-      --green-text: #00cc88;
-      --label-text: #5555aa;
-      --btn-solid: #1a8cff;
-      --nav-text: #7777aa;
-      --nav-hover: #aaaadd;
-    }
+    /* ── Scrollbar ── */
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--red); }
 
-    /* Header */
+    /* ── Header ── */
     .ext-header {
-      background: var(--blue-bg);
+      background: var(--surface);
       padding: 10px 14px;
-      font-size: 13px;
-      font-weight: 700;
-      color: var(--blue-text);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
       display: flex;
       align-items: center;
-      gap: 8px;
-      border-bottom: 1px solid var(--blue-border);
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    .header-left { display: flex; align-items: center; gap: 8px; }
+    .header-logo {
+      width: 28px; height: 28px;
+      background: var(--text);
+      border-radius: 6px;
+      display: flex; align-items: center; justify-content: center;
       flex-shrink: 0;
     }
+    .header-logo svg { width: 16px; height: 16px; }
+    .header-title {
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text);
+    }
+    .header-status {
+      display: flex; align-items: center; gap: 4px;
+      font-size: 9px;
+      font-family: var(--mono);
+      color: var(--text-muted);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .status-dot {
+      width: 5px; height: 5px;
+      border-radius: 50%;
+      background: #22c55e;
+      animation: pulse 2s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
 
-    /* Main Container */
+    /* ── Body ── */
     .ext-body {
-      padding: 14px;
       flex: 1;
       overflow-y: auto;
+      padding: 14px;
       display: flex;
       flex-direction: column;
-      gap: 16px;
+      gap: 14px;
     }
 
-    /* Views */
     .view-panel { display: none; }
-    .view-panel.active { display: block; }
+    .view-panel.active { display: flex; flex-direction: column; gap: 14px; }
 
-    /* Step Rows */
-    .ext-step-row {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-      margin-bottom: 12px;
+    /* ── Step Cards ── */
+    .step-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      transition: border-color 0.2s, box-shadow 0.2s;
     }
-    .ext-step-label {
+    .step-card:focus-within {
+      border-color: var(--red);
+      box-shadow: 0 0 0 3px var(--red-glow);
+    }
+    .step-card-header {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--surface-2);
+    }
+    .step-badge {
+      width: 24px; height: 24px;
+      border-radius: 6px;
+      background: var(--text);
+      color: var(--surface);
+      display: flex; align-items: center; justify-content: center;
       font-size: 10px;
+      font-weight: 800;
+      flex-shrink: 0;
+    }
+    .step-badge.active-badge { background: var(--red); }
+    .step-title-wrap { display: flex; flex-direction: column; }
+    .step-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+    .step-desc {
+      font-size: 10px;
+      color: var(--text-muted);
+      font-family: var(--mono);
+      margin-top: 1px;
+    }
+    .step-card-body { padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; }
+
+    /* ── Input / Textarea ── */
+    .prompt-textarea {
+      width: 100%;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 10px 12px;
+      font-size: 12px;
+      font-family: var(--mono);
+      color: var(--text);
+      min-height: 80px;
+      resize: vertical;
+      outline: none;
+      transition: border-color 0.15s, box-shadow 0.15s;
+      letter-spacing: 0;
+    }
+    .prompt-textarea::placeholder { color: var(--text-dim); }
+    .prompt-textarea:focus {
+      border-color: var(--red);
+      box-shadow: 0 0 0 3px var(--red-glow);
+      background: var(--surface);
+    }
+
+    /* ── Buttons ── */
+    .btn-primary {
+      width: 100%;
+      background: var(--red);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 9px 16px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      transition: background 0.15s, transform 0.1s, box-shadow 0.15s;
+      display: flex; align-items: center; justify-content: center; gap: 6px;
+    }
+    .btn-primary:hover { background: var(--red-hover); box-shadow: 0 4px 12px var(--red-glow); }
+    .btn-primary:active { transform: scale(0.98); }
+    .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; transform: none; box-shadow: none; }
+
+    .btn-secondary {
+      flex: 1;
+      background: var(--surface-2);
+      color: var(--text);
+      font-size: 11px;
+      font-weight: 600;
+      padding: 8px 12px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      cursor: pointer;
+      text-align: center;
+      transition: background 0.15s, border-color 0.15s;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+    .btn-secondary:hover { background: var(--border); }
+
+    .btn-group { display: flex; gap: 8px; }
+
+    /* ── Status Badges ── */
+    .status-badge {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 10px 14px;
+      font-size: 11px;
+      color: var(--text-muted);
+      text-align: center;
+      font-family: var(--mono);
+    }
+    .status-badge.ready {
+      border-color: var(--red);
+      color: var(--red);
+      background: var(--red-glow);
+      font-weight: 700;
+    }
+
+    /* ── Spinner ── */
+    .loading-row {
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      padding: 10px;
+      font-size: 11px;
+      color: var(--text-muted);
+      font-family: var(--mono);
+    }
+    .spinner {
+      width: 13px; height: 13px;
+      border: 2px solid var(--border);
+      border-top-color: var(--red);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      flex-shrink: 0;
+    }
+    @keyframes spin { 100% { transform: rotate(360deg); } }
+
+    /* ── Form Elements ── */
+    .form-group { display: flex; flex-direction: column; gap: 5px; }
+    .form-label {
+      font-size: 10px;
+      color: var(--text-muted);
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 0.08em;
-      color: var(--label-text);
     }
-    
-    /* Input Area */
-    .prompt-textarea {
-      background: rgba(255,255,255,0.03);
-      border: 1px solid rgba(255,255,255,0.1);
-      border-radius: 4px;
-      padding: 8px 10px;
+    .select-wrapper { position: relative; }
+    .select-wrapper::after {
+      content: '▼';
+      font-size: 7px;
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-dim);
+      pointer-events: none;
+    }
+    .select-input, .settings-input {
+      width: 100%;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      color: var(--text);
       font-size: 12px;
-      color: #aaaadd;
-      font-family: var(--vscode-editor-font-family, monospace);
-      width: 100%;
-      height: 60px;
-      resize: vertical;
-      outline: none;
-    }
-    .prompt-textarea:focus { border-color: var(--blue-text); }
-    .analyze-btn {
-      align-self: flex-start;
-      background: var(--blue-bg);
-      border: 1px solid var(--blue-border);
-      color: var(--blue-text);
-      padding: 5px 10px;
-      border-radius: 4px;
-      font-size: 11px;
-      cursor: pointer;
-      font-weight: 600;
-    }
-    .analyze-btn:hover { background: rgba(26,140,255,0.2); }
-
-    /* Badges */
-    .ext-step-badge {
-      background: var(--blue-bg);
-      border: 1px solid var(--blue-border);
-      border-radius: 4px;
-      padding: 7px 10px;
-      font-size: 11px;
-      color: var(--blue-text);
-      display: inline-block;
-    }
-    .ext-step-ready {
-      background: var(--green-bg);
-      border: 1px solid var(--green-border);
-      border-radius: 4px;
-      padding: 7px 10px;
-      font-size: 11px;
-      color: var(--green-text);
-      display: inline-block;
-    }
-
-    /* Questions / Selections UI */
-    .suggestions-container {
-      background: rgba(255,255,255,0.02);
-      border: 1px solid rgba(255,255,255,0.05);
+      font-family: var(--mono);
+      padding: 8px 28px 8px 10px;
       border-radius: 6px;
-      padding: 10px;
-    }
-    .select-row {
-      margin-bottom: 10px;
-    }
-    .select-label {
-      font-size: 11px;
-      color: #9999bb;
-      margin-bottom: 5px;
-    }
-    .select-box {
-      background: rgba(255,255,255,0.05);
-      border: 1px solid rgba(26,140,255,0.4);
-      border-radius: 4px;
-      padding: 6px 10px;
-      font-size: 11px;
-      color: #90caf9;
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-    }
-    .opt-btn {
-      background: transparent;
-      border: 1px solid transparent;
-      color: #aaaadd;
-      text-align: left;
-      padding: 4px 6px;
-      border-radius: 3px;
+      outline: none;
+      appearance: none;
       cursor: pointer;
+      transition: border-color 0.15s, box-shadow 0.15s;
     }
-    .opt-btn:hover { background: rgba(255,255,255,0.05); }
-    .opt-btn.selected {
-      background: var(--blue-bg);
-      border-color: var(--blue-border);
-      color: var(--blue-text);
-    }
-    .continue-btn {
-      width: 100%;
-      background: var(--btn-solid);
-      border: none;
-      border-radius: 4px;
-      color: #fff;
-      font-size: 11px;
-      font-weight: 700;
-      padding: 8px;
-      cursor: pointer;
-      margin-top: 5px;
-    }
-    .continue-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-
-    /* Final Prompt Box */
-    .final-prompt-box {
-      background: rgba(0,0,0,0.3);
-      border: 1px solid rgba(168,85,247,0.3);
-      border-radius: 4px;
-      padding: 10px;
-      font-family: var(--vscode-editor-font-family, monospace);
-      font-size: 11px;
-      color: #ccccee;
-      white-space: pre-wrap;
-      word-break: break-word;
-      max-height: 200px;
-      overflow-y: auto;
+    .select-input:focus, .settings-input:focus {
+      border-color: var(--red);
+      box-shadow: 0 0 0 3px var(--red-glow);
     }
 
-    /* Buttons Row */
-    .ext-sidebar-btns {
-      display: flex;
-      gap: 8px;
-      margin-top: 4px;
-      padding-bottom: 16px;
-      border-bottom: 1px solid rgba(255,255,255,0.05);
+    /* ── Terminal Output (Step 3) ── */
+    .terminal-wrap {
+      background: var(--text);
+      border-radius: 8px;
+      overflow: hidden;
     }
-    .ext-btn {
-      flex: 1;
-      border: none;
-      border-radius: 4px;
-      padding: 8px;
-      font-size: 11px;
-      font-weight: 600;
-      cursor: pointer;
+    .terminal-bar {
+      height: 28px;
+      background: rgba(255,255,255,0.06);
       display: flex;
       align-items: center;
-      justify-content: center;
-      gap: 5px;
+      padding: 0 12px;
+      gap: 8px;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
     }
-    .ext-btn-copy {
-      background: rgba(255,255,255,0.05);
-      color: #ccccee;
-      border: 1px solid rgba(255,255,255,0.15);
+    .terminal-dots { display: flex; gap: 4px; }
+    .terminal-dot { width: 8px; height: 8px; border-radius: 50%; }
+    .terminal-label {
+      flex: 1;
+      text-align: center;
+      font-size: 9px;
+      font-family: var(--mono);
+      color: rgba(255,255,255,0.3);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
     }
-    .ext-btn-copy:hover { background: rgba(255,255,255,0.1); }
-    .ext-btn-send {
-      background: var(--btn-solid);
-      color: #fff;
+    .terminal-body {
+      padding: 12px;
+      min-height: 80px;
+      font-family: var(--mono);
+      font-size: 11px;
+      color: rgba(255,255,255,0.8);
+      white-space: pre-wrap;
+      word-break: break-word;
+      max-height: 180px;
+      overflow-y: auto;
+      line-height: 1.6;
     }
-    .ext-btn-send:hover { opacity: 0.9; }
+    .terminal-idle {
+      color: rgba(255,255,255,0.3);
+      font-style: italic;
+      font-size: 11px;
+    }
+    .terminal-success-label {
+      color: var(--red);
+      font-weight: 700;
+      font-size: 10px;
+      margin-bottom: 6px;
+      display: block;
+    }
 
-    /* Navigation Items */
-    .ext-nav-items {
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
+    /* ── Nav Items ── */
+    .nav-divider {
+      border-top: 1px solid var(--border);
+      margin-top: 4px;
+      padding-top: 10px;
     }
     .ext-nav-item {
       display: flex;
       align-items: center;
-      gap: 10px;
+      justify-content: space-between;
       padding: 8px 10px;
-      border-radius: 4px;
-      font-size: 12px;
-      color: var(--nav-text);
+      border-radius: 6px;
       cursor: pointer;
+      color: var(--text);
+      font-size: 11px;
+      font-weight: 600;
       transition: background 0.15s;
+      border: 1px solid transparent;
     }
     .ext-nav-item:hover {
-      background: rgba(255,255,255,0.05);
-      color: var(--nav-hover);
+      background: var(--surface-2);
+      border-color: var(--border);
     }
-    .ext-nav-icon { font-size: 14px; }
-    .ext-nav-desc { margin-left: auto; font-size: 10px; opacity: 0.4; }
+    .ext-nav-desc { font-size: 10px; color: var(--text-dim); font-weight: 400; }
 
-    /* Sub Views (History, Settings, Context) */
+    /* ── Sub Views ── */
     .sub-view-header {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-muted);
+      cursor: pointer;
       display: flex;
       align-items: center;
-      gap: 10px;
-      margin-bottom: 16px;
-      color: var(--blue-text);
-      font-weight: 600;
-      cursor: pointer;
+      gap: 6px;
+      padding: 6px 0 12px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      transition: color 0.15s;
     }
-    .back-btn { font-size: 16px; }
-    
-    .settings-input {
-      width: 100%;
-      background: rgba(255,255,255,0.03);
-      border: 1px solid rgba(255,255,255,0.1);
-      color: #ccccee;
-      padding: 8px;
-      border-radius: 4px;
-      margin-bottom: 10px;
+    .sub-view-header:hover { color: var(--text); }
+    .sub-view-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 12px;
     }
-    
-    .history-item {
-      background: rgba(255,255,255,0.02);
-      border: 1px solid rgba(255,255,255,0.05);
-      padding: 8px;
-      border-radius: 4px;
+
+    /* ── History / Template Items ── */
+    .list-item {
+      padding: 10px 12px;
+      border: 1px solid var(--border);
       margin-bottom: 8px;
+      border-radius: 8px;
+      background: var(--surface);
       cursor: pointer;
+      transition: border-color 0.15s, box-shadow 0.15s;
     }
-    .history-item:hover { border-color: var(--blue-border); }
-
-    /* Spinner */
-    .spinner {
-      display: inline-block;
-      width: 14px; height: 14px;
-      border: 2px solid rgba(26,140,255,0.3);
-      border-top-color: var(--btn-solid);
-      border-radius: 50%;
-      animation: spin 0.8s linear infinite;
+    .list-item:hover {
+      border-color: var(--red);
+      box-shadow: 0 0 0 2px var(--red-glow);
     }
-    @keyframes spin { to { transform: rotate(360deg); } }
+    .list-item-name { font-weight: 700; margin-bottom: 4px; font-size: 12px; color: var(--text); }
+    .list-item-text {
+      font-family: var(--mono);
+      font-size: 10px;
+      color: var(--text-muted);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .list-item-time { font-size: 9px; color: var(--text-dim); margin-top: 4px; }
 
+    /* ── Footer ── */
+    .ext-footer {
+      flex-shrink: 0;
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      padding: 6px 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 9px;
+      font-family: var(--mono);
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    /* ── Settings toggle ── */
+    .settings-msg {
+      color: var(--red);
+      font-size: 11px;
+      text-align: center;
+      display: none;
+      margin-top: 6px;
+      font-family: var(--mono);
+    }
   </style>
 </head>
-<body>
+<body class="${theme === 'light' ? 'forced-light' : theme === 'dark' ? 'forced-dark' : ''}">
 
+  <!-- Header -->
   <div class="ext-header">
-    <span>⚡</span> Vibe Prompt Engine
+    <div class="header-left">
+      <div class="header-logo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#f06260" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+        </svg>
+      </div>
+      <div>
+        <div class="header-title">Vibe Prompt Engine</div>
+      </div>
+    </div>
+    <div class="header-status">
+      <div class="status-dot"></div>
+      <span id="headerStatus">READY</span>
+    </div>
   </div>
 
+  <!-- Body -->
   <div class="ext-body">
 
-    <!-- MAIN WORKFLOW VIEW -->
+    <!-- ── MAIN VIEW ── -->
     <div id="view-main" class="view-panel active">
-      
-      <!-- STEP 1 -->
-      <div class="ext-step-row">
-        <div class="ext-step-label">1 Raw Prompt</div>
-        <textarea class="prompt-textarea" id="promptInput" placeholder="e.g. make dashboard"></textarea>
-        <button class="analyze-btn" id="analyzeBtn" onclick="analyze()">⚡ Analyze</button>
-      </div>
 
-      <!-- STEP 2 -->
-      <div class="ext-step-row">
-        <div class="ext-step-label">2 Suggestions</div>
-        
-        <!-- Waiting state -->
-        <div id="step2-waiting" class="ext-step-badge">Waiting for prompt...</div>
-        <!-- Loading state -->
-        <div id="step2-loading" class="ext-step-badge" style="display:none; gap:8px; align-items:center;">
-          Analyzing... <span class="spinner"></span>
+      <!-- STEP 01: Raw Prompt -->
+      <div class="step-card">
+        <div class="step-card-header">
+          <div class="step-badge" id="badge1">01</div>
+          <div class="step-title-wrap">
+            <div class="step-title">Raw Prompt</div>
+            <div class="step-desc">INPUT_STREAM // TTY_READY</div>
+          </div>
         </div>
-        
-        <!-- Active state (Questions) -->
-        <div id="step2-active" class="suggestions-container" style="display:none;">
-          <div style="font-size:11px; color:#64b5f6; margin-bottom:10px; font-weight:600;">Answer a few questions</div>
-          <div id="questionsContainer"></div>
-          <button class="continue-btn" id="buildBtn" onclick="build()" disabled>Continue to Build</button>
+        <div class="step-card-body">
+          <textarea class="prompt-textarea" id="promptInput" placeholder="e.g. build a high-performance dashboard with real-time charts..."></textarea>
+          <button class="btn-primary" id="analyzeBtn" onclick="analyze()">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+            Analyze Intent
+          </button>
         </div>
       </div>
 
-      <!-- STEP 3 -->
-      <div class="ext-step-row">
-        <div class="ext-step-label">3 Final Prompt</div>
-        
-        <!-- Waiting state -->
-        <div id="step3-waiting" class="ext-step-badge" style="color:var(--nav-text); border-color:rgba(255,255,255,0.1); background:rgba(255,255,255,0.02)">
-          Not ready
+      <!-- STEP 02: User Selection -->
+      <div class="step-card">
+        <div class="step-card-header">
+          <div class="step-badge" id="badge2">02</div>
+          <div class="step-title-wrap">
+            <div class="step-title">User Selection</div>
+            <div class="step-desc">PARAM_DETERMINATION</div>
+          </div>
         </div>
-        <!-- Loading state -->
-        <div id="step3-loading" class="ext-step-badge" style="display:none; gap:8px; align-items:center;">
-          Building... <span class="spinner"></span>
-        </div>
-        
-        <!-- Active state (Final prompt) -->
-        <div id="step3-active" style="display:none;">
-          <div class="ext-step-ready" style="margin-bottom:8px; width:100%;">✅ Ready to send</div>
-          <div class="final-prompt-box" id="resultBox"></div>
+        <div class="step-card-body">
+          <div id="step2-waiting" class="status-badge">Waiting for prompt analysis...</div>
+          <div id="step2-loading" class="loading-row" style="display:none;">
+            <div class="spinner"></div> Analyzing intent...
+          </div>
+          <div id="step2-active" style="display:none; display:flex; flex-direction:column; gap:10px;">
+            <div id="questionsContainer" style="display:flex; flex-direction:column; gap:10px;"></div>
+            <button class="btn-primary" id="buildBtn" onclick="build()" disabled>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M2 12h20"/></svg>
+              Continue to Build
+            </button>
+          </div>
         </div>
       </div>
 
-      <!-- Buttons -->
-      <div class="ext-sidebar-btns">
-        <button class="ext-btn ext-btn-copy" onclick="copyPrompt()">📋 Copy Prompt</button>
-        <button class="ext-btn ext-btn-send" onclick="sendToAI()">🚀 Send to AI Tool</button>
+      <!-- STEP 03: Final Prompt -->
+      <div class="step-card">
+        <div class="step-card-header">
+          <div class="step-badge" id="badge3">03</div>
+          <div class="step-title-wrap">
+            <div class="step-title">Final Prompt</div>
+            <div class="step-desc">TERMINAL_OUTPUT_READY</div>
+          </div>
+        </div>
+        <div class="step-card-body">
+          <div id="step3-waiting">
+            <div class="terminal-wrap">
+              <div class="terminal-bar">
+                <div class="terminal-dots">
+                  <div class="terminal-dot" style="background:rgba(255,255,255,0.15)"></div>
+                  <div class="terminal-dot" style="background:rgba(255,255,255,0.1)"></div>
+                  <div class="terminal-dot" style="background:rgba(255,255,255,0.1)"></div>
+                </div>
+                <div class="terminal-label" id="terminalStatus">STDOUT: IDLE</div>
+              </div>
+              <div class="terminal-body">
+                <span class="terminal-idle">&gt; Awaiting selection completion...</span>
+              </div>
+            </div>
+          </div>
+          <div id="step3-loading" class="loading-row" style="display:none;">
+            <div class="spinner"></div> Building enhanced prompt...
+          </div>
+          <div id="step3-active" style="display:none;">
+            <div class="terminal-wrap">
+              <div class="terminal-bar">
+                <div class="terminal-dots">
+                  <div class="terminal-dot" style="background:#ef4444"></div>
+                  <div class="terminal-dot" style="background:#eab308"></div>
+                  <div class="terminal-dot" style="background:#22c55e"></div>
+                </div>
+                <div class="terminal-label">STDOUT: READY</div>
+              </div>
+              <div class="terminal-body">
+                <span class="terminal-success-label">[SUCCESS] COMPILATION COMPLETE</span>
+                <div id="resultBox"></div>
+              </div>
+            </div>
+            <div class="btn-group" style="margin-top:8px;">
+              <button class="btn-secondary" onclick="copyPrompt()">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;margin-right:4px;"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+                Copy
+              </button>
+              <button class="btn-secondary" onclick="sendToAI()">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;margin-right:4px;"><path d="m22 2-7 20-4-9-9-4 20-7z"/></svg>
+                Send to AI
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
 
-      <!-- Navigation List -->
-      <div class="ext-nav-items">
+      <!-- Navigation -->
+      <div class="nav-divider">
         <div class="ext-nav-item" onclick="showView('history')">
-          <span class="ext-nav-icon">🕐</span> Prompt History <span class="ext-nav-desc">Previous prompts</span>
+          Prompt History <span class="ext-nav-desc">Previous prompts</span>
         </div>
         <div class="ext-nav-item" onclick="showView('templates')">
-          <span class="ext-nav-icon">📄</span> Templates <span class="ext-nav-desc">Pre-built prompts</span>
+          Templates <span class="ext-nav-desc">Pre-built prompts</span>
         </div>
         <div class="ext-nav-item" onclick="showView('context')">
-          <span class="ext-nav-icon">🔍</span> Project Context <span class="ext-nav-desc">Auto-detect stack</span>
+          Project Context <span class="ext-nav-desc">Auto-detect stack</span>
         </div>
         <div class="ext-nav-item" onclick="showView('settings')">
-          <span class="ext-nav-icon">⚙️</span> Settings <span class="ext-nav-desc">Configure</span>
+          Settings <span class="ext-nav-desc">Configure</span>
         </div>
       </div>
 
-    </div>
+    </div><!-- end view-main -->
 
-    <!-- HISTORY VIEW -->
+    <!-- ── HISTORY VIEW ── -->
     <div id="view-history" class="view-panel">
-      <div class="sub-view-header" onclick="showView('main')"><span class="back-btn">‹</span> Back to Workflow</div>
-      <div class="ext-step-label" style="margin-bottom:10px">Prompt History</div>
-      <div id="historyList" style="font-size:12px; color:var(--nav-text);">No history yet.</div>
+      <div class="sub-view-header" onclick="showView('main')">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+        Back to Workflow
+      </div>
+      <div class="sub-view-title">Prompt History</div>
+      <div id="historyList" style="font-size:12px; color:var(--text-muted);">No history yet.</div>
     </div>
 
-    <!-- TEMPLATES VIEW -->
+    <!-- ── TEMPLATES VIEW ── -->
     <div id="view-templates" class="view-panel">
-      <div class="sub-view-header" onclick="showView('main')"><span class="back-btn">‹</span> Back to Workflow</div>
-      <div class="ext-step-label" style="margin-bottom:10px">Templates</div>
+      <div class="sub-view-header" onclick="showView('main')">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+        Back to Workflow
+      </div>
+      <div class="sub-view-title">Templates</div>
       <div id="templatesList"></div>
     </div>
 
-    <!-- CONTEXT VIEW -->
+    <!-- ── CONTEXT VIEW ── -->
     <div id="view-context" class="view-panel">
-      <div class="sub-view-header" onclick="showView('main')"><span class="back-btn">‹</span> Back to Workflow</div>
-      <div class="ext-step-label" style="margin-bottom:10px">Project Context</div>
-      <button class="ext-btn ext-btn-copy" style="width:100%; margin-bottom:12px;" onclick="detectContext()">🔍 Auto-Detect Stack</button>
-      <div style="font-size:11px; margin-bottom:5px;">Project Name</div>
-      <input class="settings-input" id="ctxName" type="text" />
-      <div style="font-size:11px; margin-bottom:5px;">Tech Stack</div>
-      <input class="settings-input" id="ctxStack" type="text" />
-      <button class="ext-btn ext-btn-send" style="width:100%;" onclick="showView('main')">💾 Save Context</button>
+      <div class="sub-view-header" onclick="showView('main')">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+        Back to Workflow
+      </div>
+      <div class="sub-view-title">Project Context</div>
+      <button class="btn-secondary" style="width:100%; margin-bottom:14px;" onclick="detectContext()">Auto-Detect Stack</button>
+      <div class="form-group" style="margin-bottom:10px;">
+        <label class="form-label">Project Name</label>
+        <input class="settings-input" id="ctxName" type="text" placeholder="my-project" />
+      </div>
+      <div class="form-group" style="margin-bottom:14px;">
+        <label class="form-label">Tech Stack</label>
+        <input class="settings-input" id="ctxStack" type="text" placeholder="React, TypeScript, Tailwind..." />
+      </div>
+      <button class="btn-primary" onclick="showView('main')">Save Context</button>
     </div>
 
-    <!-- SETTINGS VIEW -->
+    <!-- ── SETTINGS VIEW ── -->
     <div id="view-settings" class="view-panel">
-      <div class="sub-view-header" onclick="showView('main')"><span class="back-btn">‹</span> Back to Workflow</div>
-      <div class="ext-step-label" style="margin-bottom:10px">Settings</div>
-      <div style="font-size:11px; margin-bottom:5px;">Backend URL</div>
-      <input class="settings-input" id="settingUrl" type="text" value="http://localhost:8000" />
-      <button class="ext-btn ext-btn-send" style="width:100%;" onclick="saveSettings()">💾 Save Settings</button>
-      <div id="settingsMsg" style="color:var(--green-text); font-size:11px; margin-top:8px; display:none;">✅ Saved</div>
+      <div class="sub-view-header" onclick="showView('main')">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+        Back to Workflow
+      </div>
+      <div class="sub-view-title">Settings</div>
+      <div class="form-group" style="margin-bottom:12px;">
+        <label class="form-label">Backend URL</label>
+        <input class="settings-input" id="settingUrl" type="text" value="http://localhost:8000" />
+      </div>
+      <div class="form-group" style="margin-bottom:14px;">
+        <label class="form-label">Theme</label>
+        <div class="select-wrapper">
+          <select class="select-input" id="settingTheme">
+            <option value="auto" ${theme === 'auto' ? 'selected' : ''}>Auto (Match VS Code)</option>
+            <option value="light" ${theme === 'light' ? 'selected' : ''}>Light</option>
+            <option value="dark" ${theme === 'dark' ? 'selected' : ''}>Dark</option>
+          </select>
+        </div>
+      </div>
+      <button class="btn-primary" onclick="saveSettings()">Save Settings</button>
+      <div class="settings-msg" id="settingsMsg">Settings saved successfully.</div>
     </div>
 
+  </div><!-- end ext-body -->
+
+  <!-- Footer -->
+  <div class="ext-footer">
+    <span>Kinetic System v1.0</span>
+    <span id="footerStatus">Nominal</span>
   </div>
 
   <script>
     const vscode = acquireVsCodeApi();
-    
+
     let state = {
       prompt: '',
       analysis: null,
@@ -753,6 +1019,7 @@ function getSidebarHtml(context) {
       history: []
     };
 
+    // ── Message Handler ──
     window.addEventListener('message', (event) => {
       const msg = event.data;
       switch (msg.command) {
@@ -760,33 +1027,37 @@ function getSidebarHtml(context) {
           document.getElementById('promptInput').value = msg.prompt;
           break;
         case 'analysisStart':
-          document.getElementById('step2-waiting').style.display = 'none';
-          document.getElementById('step2-loading').style.display = 'flex';
-          document.getElementById('step2-active').style.display = 'none';
+          setStatus('ANALYZING...');
+          setStep2State('loading');
+          setStep3State('waiting');
+          setBadge(2, 'active');
           break;
         case 'analysisResult':
           state.analysis = msg.data;
           renderQuestions(msg.data.suggestions?.questions || []);
+          setStatus('READY');
           break;
         case 'analysisError':
-          document.getElementById('step2-loading').style.display = 'none';
-          document.getElementById('step2-waiting').style.display = 'block';
+          setStep2State('waiting');
+          setStatus('ERROR');
+          setBadge(2, 'default');
           alert('Analysis error: ' + msg.message);
           break;
         case 'buildStart':
-          document.getElementById('step3-waiting').style.display = 'none';
-          document.getElementById('step3-active').style.display = 'none';
-          document.getElementById('step3-loading').style.display = 'flex';
+          setStatus('BUILDING...');
+          setStep3State('loading');
+          setBadge(3, 'active');
           break;
         case 'buildResult':
-          document.getElementById('step3-loading').style.display = 'none';
-          document.getElementById('step3-active').style.display = 'block';
-          document.getElementById('resultBox').textContent = msg.data.enhanced_prompt;
+          setStep3State('result', msg.data.enhanced_prompt);
+          setStatus('READY');
+          setBadge(3, 'done');
           if (msg.history) updateHistory(msg.history);
           break;
         case 'buildError':
-          document.getElementById('step3-loading').style.display = 'none';
-          document.getElementById('step3-waiting').style.display = 'block';
+          setStep3State('waiting');
+          setStatus('ERROR');
+          setBadge(3, 'default');
           alert('Build error: ' + msg.message);
           break;
         case 'loadHistory':
@@ -802,58 +1073,81 @@ function getSidebarHtml(context) {
       }
     });
 
+    // ── State Helpers ──
+    function setStatus(text) {
+      document.getElementById('headerStatus').textContent = text;
+      document.getElementById('footerStatus').textContent = text === 'READY' ? 'Nominal' : text;
+    }
+
+    function setBadge(num, mode) {
+      const el = document.getElementById('badge' + num);
+      if (!el) return;
+      el.classList.toggle('active-badge', mode === 'active' || mode === 'done');
+      el.style.background = mode === 'done' ? '#22c55e' : '';
+    }
+
+    function setStep2State(state) {
+      document.getElementById('step2-waiting').style.display = state === 'waiting' ? 'block' : 'none';
+      document.getElementById('step2-loading').style.display = state === 'loading' ? 'flex' : 'none';
+      document.getElementById('step2-active').style.display = state === 'active' ? 'flex' : 'none';
+    }
+
+    function setStep3State(s, text) {
+      document.getElementById('step3-waiting').style.display = s === 'waiting' ? 'block' : 'none';
+      document.getElementById('step3-loading').style.display = s === 'loading' ? 'flex' : 'none';
+      document.getElementById('step3-active').style.display = s === 'result' ? 'block' : 'none';
+      if (s === 'result' && text) document.getElementById('resultBox').textContent = text;
+    }
+
+    // ── View Navigation ──
     function showView(id) {
       document.querySelectorAll('.view-panel').forEach(el => el.classList.remove('active'));
       document.getElementById('view-' + id).classList.add('active');
     }
 
+    // ── Analyze ──
     function analyze() {
       const prompt = document.getElementById('promptInput').value.trim();
       if (!prompt) return;
       state.prompt = prompt;
       state.selections = {};
       vscode.postMessage({ command: 'analyze', prompt });
-      
-      // Reset step 3
-      document.getElementById('step3-active').style.display = 'none';
-      document.getElementById('step3-waiting').style.display = 'block';
+      setBadge(1, 'done');
     }
 
+    // ── Render Questions ──
     function renderQuestions(questions) {
-      document.getElementById('step2-loading').style.display = 'none';
       const container = document.getElementById('questionsContainer');
-      
+      container.innerHTML = '';
+
       if (questions.length === 0) {
-        document.getElementById('step2-waiting').style.display = 'block';
-        document.getElementById('step2-waiting').textContent = 'No questions needed. Ready to build!';
+        const msg = document.createElement('div');
+        msg.className = 'status-badge ready';
+        msg.textContent = 'No questions needed. Ready to build!';
+        container.appendChild(msg);
         document.getElementById('buildBtn').disabled = false;
-        document.getElementById('step2-active').style.display = 'block';
+        setStep2State('active');
         return;
       }
 
       state.totalQ = questions.length;
       container.innerHTML = questions.map((q, i) => \`
-        <div class="select-row">
-          <div class="select-label">\${i+1}. \${q.question}</div>
-          <div class="select-box">
-            \${q.options.map((opt, oi) => \`
-              <button class="opt-btn" id="opt-\${i}-\${oi}" 
-                onclick="selectOpt(\${i}, \${oi}, '\${opt.replace(/'/g, "\\\\'")}')"
-                data-q="\${i}">
-                \${opt}
-              </button>
-            \`).join('')}
+        <div class="form-group">
+          <label class="form-label">\${q.question}</label>
+          <div class="select-wrapper">
+            <select class="select-input" onchange="selectOpt(\${i}, this.value)">
+              <option value="" disabled selected>-- Select an option --</option>
+              \${q.options.map(opt => \`<option value="\${opt.replace(/"/g, '&quot;')}">\${opt}</option>\`).join('')}
+            </select>
           </div>
         </div>
       \`).join('');
 
-      document.getElementById('step2-active').style.display = 'block';
+      setStep2State('active');
       updateProgress();
     }
 
-    function selectOpt(qi, oi, val) {
-      document.querySelectorAll(\`[data-q="\${qi}"]\`).forEach(b => b.classList.remove('selected'));
-      document.getElementById(\`opt-\${qi}-\${oi}\`).classList.add('selected');
+    function selectOpt(qi, val) {
       const q = state.analysis.suggestions.questions[qi];
       state.selections[q.question] = val;
       updateProgress();
@@ -861,12 +1155,14 @@ function getSidebarHtml(context) {
 
     function updateProgress() {
       const answered = Object.keys(state.selections).length;
-      document.getElementById('buildBtn').disabled = answered < state.totalQ;
-      document.getElementById('buildBtn').textContent = answered < state.totalQ 
-        ? \`Continue to Build (\${answered}/\${state.totalQ})\` 
-        : '🚀 Continue to Build';
+      const btn = document.getElementById('buildBtn');
+      btn.disabled = answered < state.totalQ;
+      btn.textContent = answered < state.totalQ
+        ? \`Continue to Build (\${answered}/\${state.totalQ})\`
+        : 'Continue to Build';
     }
 
+    // ── Build ──
     function build() {
       vscode.postMessage({
         command: 'build',
@@ -878,67 +1174,82 @@ function getSidebarHtml(context) {
     }
 
     function copyPrompt() { vscode.postMessage({ command: 'copyPrompt' }); }
-    function sendToAI() { vscode.postMessage({ command: 'sendToAI' }); }
-    
+    function sendToAI()   { vscode.postMessage({ command: 'sendToAI' }); }
+
+    // ── Reset ──
     function resetUI() {
       document.getElementById('promptInput').value = '';
-      document.getElementById('step2-active').style.display = 'none';
-      document.getElementById('step2-waiting').style.display = 'block';
-      document.getElementById('step2-waiting').textContent = 'Waiting for prompt...';
-      document.getElementById('step3-active').style.display = 'none';
-      document.getElementById('step3-waiting').style.display = 'block';
+      setStep2State('waiting');
+      setStep3State('waiting');
+      setBadge(1, 'default');
+      setBadge(2, 'default');
+      setBadge(3, 'default');
+      setStatus('READY');
       state = { prompt: '', analysis: null, selections: {}, totalQ: 0, history: state.history };
     }
 
-    // Settings
+    // ── Settings ──
     function saveSettings() {
-      const url = document.getElementById('settingUrl').value;
-      vscode.postMessage({ command: 'saveSettings', backendUrl: url });
-      document.getElementById('settingsMsg').style.display = 'block';
-      setTimeout(() => document.getElementById('settingsMsg').style.display = 'none', 2000);
+      const url   = document.getElementById('settingUrl').value;
+      const theme = document.getElementById('settingTheme').value;
+      vscode.postMessage({ command: 'saveSettings', backendUrl: url, theme });
+      applyTheme(theme);
+      const msg = document.getElementById('settingsMsg');
+      msg.style.display = 'block';
+      setTimeout(() => msg.style.display = 'none', 2000);
     }
 
-    // Context
+    function applyTheme(theme) {
+      document.body.classList.remove('forced-light', 'forced-dark');
+      if (theme === 'light')      document.body.classList.add('forced-light');
+      else if (theme === 'dark')  document.body.classList.add('forced-dark');
+    }
+
+    // ── Context ──
     function detectContext() {
       vscode.postMessage({ command: 'detectContext' });
     }
 
-    // History
+    // ── History ──
     function updateHistory(history) {
       state.history = history || [];
       const list = document.getElementById('historyList');
-      if (history.length === 0) { list.innerHTML = 'No history yet.'; return; }
-      
+      if (!history || history.length === 0) {
+        list.innerHTML = '<div style="color:var(--text-muted); font-size:11px; text-align:center; padding:20px 0;">No history yet.</div>';
+        return;
+      }
       list.innerHTML = history.map(h => \`
-        <div class="history-item" onclick="loadHist('\${h.id}')">
-          <div style="font-family:monospace; margin-bottom:4px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">\${h.prompt}</div>
-          <div style="font-size:10px; opacity:0.5;">\${new Date(h.created_at).toLocaleTimeString()}</div>
+        <div class="list-item" onclick="loadHist('\${h.id}')">
+          <div class="list-item-text">\${h.prompt}</div>
+          <div class="list-item-time">\${new Date(h.created_at).toLocaleTimeString()}</div>
         </div>
       \`).join('');
     }
-    
+
     function loadHist(id) {
       const h = state.history.find(x => x.id === id);
       if (h) {
         document.getElementById('promptInput').value = h.prompt;
-        document.getElementById('resultBox').textContent = h.enhanced_prompt;
-        document.getElementById('step3-waiting').style.display = 'none';
-        document.getElementById('step3-active').style.display = 'block';
+        setStep3State('result', h.enhanced_prompt);
+        setBadge(3, 'done');
         showView('main');
       }
     }
 
-    // Templates
+    // ── Templates ──
     const templates = [
-      { name: 'Dashboard', p: 'make dashboard' },
-      { name: 'Auth System', p: 'create login and signup system with JWT auth' },
-      { name: 'Landing Page', p: 'create a modern SaaS landing page' },
-      { name: 'REST API', p: 'build a REST API with CRUD operations' }
+      { name: 'Dashboard',    desc: 'Analytics with charts & KPIs', p: 'make a react dashboard with analytics charts and KPI cards' },
+      { name: 'Auth System',  desc: 'Login / Signup with JWT',       p: 'create login and signup system with JWT auth' },
+      { name: 'Landing Page', desc: 'Modern SaaS landing',           p: 'create a modern SaaS landing page with hero and pricing' },
+      { name: 'REST API',     desc: 'Full CRUD API',                  p: 'build a REST API with CRUD operations and validation' },
+      { name: 'Data Table',   desc: 'Sort, filter, paginate',         p: 'create a data table with sorting filtering and pagination' },
+      { name: 'Chat UI',      desc: 'Real-time messaging',            p: 'build a chat interface with message bubbles and real-time updates' },
     ];
+
     document.getElementById('templatesList').innerHTML = templates.map(t => \`
-      <div class="history-item" onclick="useTpl('\${t.p}')">
-        <div style="font-weight:600; margin-bottom:4px;">\${t.name}</div>
-        <div style="font-family:monospace; font-size:10px; opacity:0.6;">\${t.p}</div>
+      <div class="list-item" onclick="useTpl('\${t.p}')">
+        <div class="list-item-name">\${t.name}</div>
+        <div class="list-item-text">\${t.desc}</div>
       </div>
     \`).join('');
 
@@ -957,14 +1268,14 @@ function getSidebarHtml(context) {
 // =====================================================
 function getBuiltInTemplates() {
   return [
-    { icon: '📊', name: 'Dashboard', prompt: 'make dashboard', description: 'Analytics dashboard with charts and KPIs' },
-    { icon: '🔐', name: 'Auth System', prompt: 'create login and signup system with JWT auth', description: 'Full authentication flow' },
-    { icon: '🚀', name: 'Landing Page', prompt: 'create a modern SaaS landing page', description: 'Hero, features, pricing, CTA' },
-    { icon: '⚡', name: 'REST API', prompt: 'build a REST API with CRUD operations', description: 'Full CRUD with validation' },
-    { icon: '📋', name: 'Data Table', prompt: 'create a data table with sorting filtering and pagination', description: 'Interactive table with management' },
-    { icon: '💬', name: 'Chat UI', prompt: 'build a chat interface with message bubbles and real-time updates', description: 'Modern chat with streaming' },
-    { icon: '🛒', name: 'Product Page', prompt: 'create an ecommerce product listing page with cart', description: 'Product cards, filters, cart' },
-    { icon: '⚙️', name: 'Settings Page', prompt: 'create a user settings and profile page', description: 'Profile, preferences, security tabs' },
+    { icon: '', name: 'Dashboard', prompt: 'make dashboard', description: 'Analytics dashboard with charts and KPIs' },
+    { icon: '', name: 'Auth System', prompt: 'create login and signup system with JWT auth', description: 'Full authentication flow' },
+    { icon: '', name: 'Landing Page', prompt: 'create a modern SaaS landing page', description: 'Hero, features, pricing, CTA' },
+    { icon: '', name: 'REST API', prompt: 'build a REST API with CRUD operations', description: 'Full CRUD with validation' },
+    { icon: '', name: 'Data Table', prompt: 'create a data table with sorting filtering and pagination', description: 'Interactive table with management' },
+    { icon: '', name: 'Chat UI', prompt: 'build a chat interface with message bubbles and real-time updates', description: 'Modern chat with streaming' },
+    { icon: '', name: 'Product Page', prompt: 'create an ecommerce product listing page with cart', description: 'Product cards, filters, cart' },
+    { icon: '', name: 'Settings Page', prompt: 'create a user settings and profile page', description: 'Profile, preferences, security tabs' },
   ];
 }
 

@@ -11,6 +11,9 @@
     "Machine Learning"
   ],
   "main": "./extension.js",
+  "activationEvents": [
+    "onStartupFinished"
+  ],
   "contributes": {
     "commands": [
       {
@@ -27,6 +30,11 @@
         "command": "vibePromptEngine.enhancePrompt",
         "key": "ctrl+shift+v",
         "mac": "cmd+shift+v"
+      },
+      {
+        "command": "vibePromptEngine.showSidebar",
+        "key": "ctrl+alt+v",
+        "mac": "cmd+alt+v"
       }
     ],
     "viewsContainers": {
@@ -65,5 +73,9 @@
     "@vscode/test-cli": "^0.0.12",
     "@vscode/test-electron": "^2.5.2",
     "eslint": "^9.39.3"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/khanolkarsujal/make-prompt-better.git"
   }
 }
