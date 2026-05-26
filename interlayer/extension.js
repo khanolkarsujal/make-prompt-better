@@ -202,7 +202,7 @@ async function runNextStage(prompt, selections, model, context) {
   postToSidebar({ command: 'stageStart' });
 
   try {
-    const response = await axios.post(`${backendUrl}/api/next`, { prompt, selections, model }, { timeout: 60000 });
+    const response = await axios.post(`${backendUrl}/api/next`, { prompt, selections, model }, { timeout: 300000 });
     const state = response.data;
 
     if (state.stage === 'final') {
