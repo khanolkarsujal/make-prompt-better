@@ -3,6 +3,7 @@ from anthropic import Anthropic
 from openai import OpenAI
 from core.config import settings
 from typing import Dict, List, Any
+from intelligence.orchestration import IntelligenceOrchestrator
 
 # Initialize AI client based on provider
 if settings.AI_PROVIDER == "xai":
@@ -258,28 +259,17 @@ User Selections:
             }
 
 # Main service functions
-async def analyze_prompt(prompt: str) -> Dict[str, Any]:
-    """Full analysis pipeline: Intent, Context, Ambiguity, Suggestions"""
-    intent_analyzer = IntentAnalyzer()
-    context_detector = ContextDetector()
-    ambiguity_detector = AmbiguityDetector()
-    suggestion_engine = SuggestionEngine()
-    
-    # Run analysis in parallel
-    intent = await intent_analyzer.analyze(prompt)
-    context = await context_detector.detect(prompt)
-    ambiguity = await ambiguity_detector.detect(prompt)
-    
-    # Generate suggestions based on analysis
-    suggestions = await suggestion_engine.generate_suggestions(prompt, intent, context, ambiguity)
-    
-    return {
-        "intent": intent,
-        "context": context,
-        "ambiguity": ambiguity,
-        "suggestions": suggestions
-    }
 
+async def analyze_prompt(prompt: str) -> Dict[str, Any]:
+    """
+    Full analysis pipeline powered by
+    Intelligence Orchestration Layer.
+    """
+
+    orchestrator = IntelligenceOrchestrator()
+
+    return await orchestrator.analyze_prompt(prompt)
+    
 async def build_enhanced_prompt(original_prompt: str, selections: Dict[str, str], intent: Dict = None, context: Dict = None) -> Dict[str, Any]:
     """Build enhanced prompt with selections"""
     prompt_builder = PromptBuilder()
