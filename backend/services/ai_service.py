@@ -3,8 +3,8 @@ from anthropic import Anthropic
 from openai import OpenAI
 from core.config import settings
 from typing import Dict, List, Any
-from intelligence.orchestration import IntelligenceOrchestrator
-from intelligence.prompt_enhancer import PromptEnhancer
+from rajeev.intelligence.orchestration import IntelligenceOrchestrator
+from rajeev.intelligence.prompt_enhancer import PromptEnhancer
 
 # Initialize AI client based on provider
 if settings.AI_PROVIDER == "xai":

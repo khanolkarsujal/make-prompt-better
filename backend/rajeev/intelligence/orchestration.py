@@ -3,10 +3,10 @@ import asyncio
 import logging
 
 logger = logging.getLogger(__name__)
-from intelligence.intent_classifier import IntentClassifier
-from intelligence.context_detector import ContextDetector
-from intelligence.ambiguity_detector import AmbiguityDetector
-from intelligence.suggestion_engine import SuggestionEngine
+from rajeev.intelligence.intent_classifier import IntentClassifier
+from rajeev.intelligence.context_detector import ContextDetector
+from rajeev.intelligence.ambiguity_detector import AmbiguityDetector
+from rajeev.intelligence.suggestion_engine import SuggestionEngine
 
 
 class IntelligenceOrchestrator:
