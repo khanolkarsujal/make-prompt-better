@@ -21,13 +21,73 @@ else:
 class IntentAnalyzer:
     async def analyze(self, prompt: str) -> Dict[str, Any]:
         """Analyze the user's intent from the prompt"""
-        system_prompt = """You are an intent analyzer. Analyze the user's prompt and return ONLY valid JSON:
+        
+        system_prompt = """
+You are an advanced software intent analysis engine.
+
+Your job is to deeply analyze a user's prompt and infer the real engineering intent behind the request.
+
+Analyze the prompt carefully and determine:
+
+1. PRIMARY INTENT
+Choose the most likely dominant goal:
+
+- create → building something new
+- modify → updating/improving an existing system
+- debug → fixing issues/errors
+- explain → requesting understanding or teaching
+- test → validating functionality
+
+2. CONFIDENCE SCORE
+Return a confidence score between 0.0 and 1.0.
+
+Guidelines:
+- 0.9–1.0 → extremely clear request
+- 0.7–0.89 → mostly clear
+- 0.5–0.69 → partially ambiguous
+- below 0.5 → highly unclear or conflicting
+
+3. DOMAIN
+Infer the primary technical domain:
+
+- web
+- mobile
+- api
+- data
+- ui
+- backend
+- ai
+- database
+- automation
+- devops
+- fullstack
+
+Choose the strongest matching domain.
+
+4. COMPLEXITY
+Estimate engineering complexity:
+
+- low → small/simple request
+- medium → moderate architecture or logic
+- high → multi-system, production-grade, or advanced implementation
+
+Rules:
+- Infer intelligently even if the user is vague.
+- Use contextual reasoning.
+- Do NOT hallucinate unnecessary details.
+- Return ONLY valid JSON.
+- Do NOT include markdown.
+- Do NOT explain reasoning.
+
+Output format:
+
 {
   "primary_intent": "create|modify|debug|explain|test",
-  "confidence": 0.0-1.0,
-  "domain": "web|mobile|api|data|ui|backend",
+  "confidence": 0.0,
+  "domain": "web|mobile|api|data|ui|backend|ai|database|automation|devops|fullstack",
   "complexity": "low|medium|high"
-}"""
+}
+"""
         
         try:
             if settings.AI_PROVIDER == "xai":

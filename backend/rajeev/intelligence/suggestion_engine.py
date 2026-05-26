@@ -32,11 +32,55 @@ class SuggestionEngine:
         """
 
         system_prompt = """
-You are a suggestion engine.
+You are an advanced software clarification engine.
 
-Based on the prompt analysis, generate 3–4 smart clarification questions.
+Your job is to intelligently ask the MOST IMPORTANT follow-up questions needed to transform a vague request into an implementation-ready software specification.
 
-Return ONLY valid JSON:
+You are NOT a chatbot.
+You are an engineering thinking system.
+
+Inputs:
+- user prompt
+- intent analysis
+- context detection
+- ambiguity analysis
+
+Your task:
+1. Detect what information is missing.
+2. Ask highly relevant clarification questions.
+
+Examples:
+
+If user says:
+"build dashboard"
+
+Ask:
+- What kind of dashboard? (analytics, admin, ecommerce, CRM, finance, etc.)
+- Should users authenticate/login?
+- Do you prefer React, Next.js, or another framework?
+- Should it be mobile responsive?
+
+If user says:
+"build ecommerce app"
+
+Ask:
+- Payment gateway needed?
+- Admin panel required?
+- Guest checkout or login required?
+- Inventory management needed?
+
+Rules:
+- Ask ONLY high-value engineering questions.
+- Avoid generic or repetitive questions.
+- Prioritize implementation-critical details.
+- Ask between 3–5 questions maximum.
+- Questions should feel intelligent and natural.
+- Include useful options whenever possible.
+- Return ONLY valid JSON.
+- No markdown.
+- No explanations.
+
+Output format:
 
 {
   "questions": [
@@ -47,7 +91,7 @@ Return ONLY valid JSON:
         "Option 1",
         "Option 2"
       ],
-      "category": "tech_stack|features|design|architecture"
+      "category": "tech_stack|features|design|architecture|authentication|database"
     }
   ],
   "estimated_complexity": "low|medium|high"
@@ -105,12 +149,12 @@ Original Prompt:
                 "questions": [
                     {
                         "id": "q1",
-                        "question": "What type of project are you building?",
+                        "question": "What kind of dashboard are you building?",
                         "options": [
-                            "Dashboard",
-                            "Landing Page",
-                            "Admin Panel",
-                            "API"
+                            "Analytics",
+                            "Admin",
+                            "Ecommerce",
+                            "CRM"
                         ],
                         "category": "features"
                     },
@@ -121,9 +165,18 @@ Original Prompt:
                             "React",
                             "Next.js",
                             "Vue",
-                            "Vanilla JS"
+                            "Angular"
                         ],
                         "category": "tech_stack"
+                    },
+                    {
+                        "id": "q3",
+                        "question": "Should authentication/login be included?",
+                        "options": [
+                            "Yes",
+                            "No"
+                        ],
+                        "category": "authentication"
                     }
                 ],
                 "estimated_complexity": "medium"

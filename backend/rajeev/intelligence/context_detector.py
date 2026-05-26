@@ -26,15 +26,82 @@ class ContextDetector:
         """
 
         system_prompt = """
-You are a context detector.
+You are an advanced software project context detection engine.
 
-Analyze the prompt and return ONLY valid JSON:
+Your job is to deeply analyze a user's prompt and extract meaningful engineering context.
+
+Analyze the request and infer:
+
+1. TECH STACK
+Detect explicitly mentioned OR implied technologies.
+
+Return an empty list if unknown.
+
+2. PROJECT TYPE
+Infer the strongest matching project category:
+
+- dashboard
+- app
+- api
+- library
+- ecommerce
+- admin_panel
+- landing_page
+- portfolio
+- ai_system
+- automation
+- saas_platform
+
+3. FEATURES
+Infer likely intended features.
+
+Examples:
+Dashboard:
+- charts
+- analytics
+- filters
+- authentication
+- export
+
+Ecommerce:
+- cart
+- payments
+- products
+- admin panel
+
+Admin:
+- role management
+- permissions
+- CRUD
+
+4. MISSING CONTEXT
+Detect missing information needed for implementation.
+
+Examples:
+- framework
+- design_style
+- authentication
+- database
+- responsive_behavior
+- deployment_target
+- state_management
+- api_structure
+
+Rules:
+- infer intelligently
+- avoid hallucination
+- prefer practical engineering assumptions
+- return ONLY valid JSON
+- no markdown
+- no explanations
+
+Output format:
 
 {
-  "tech_stack": ["framework1", "framework2"],
-  "project_type": "dashboard|app|api|library",
-  "features": ["feature1", "feature2"],
-  "missing_context": ["context1", "context2"]
+  "tech_stack": [],
+  "project_type": "dashboard|app|api|library|ecommerce|admin_panel|landing_page|portfolio|ai_system|automation|saas_platform",
+  "features": [],
+  "missing_context": []
 }
 """
 
