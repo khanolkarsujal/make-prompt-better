@@ -260,6 +260,18 @@ User Selections:
             }
 
 # Main service functions
+# Main service functions
+
+async def analyze_prompt(prompt: str) -> Dict[str, Any]:
+    """
+    Full analysis pipeline powered by
+    Intelligence Orchestration Layer.
+    """
+
+    orchestrator = IntelligenceOrchestrator()
+
+    return await orchestrator.analyze_prompt(prompt)
+
 
 async def build_enhanced_prompt(
     original_prompt: str,
@@ -276,7 +288,7 @@ async def build_enhanced_prompt(
 
     # Auto-analyze if missing
     if not intent:
-        intent_classifier = IntentClassifier()
+        intent_classifier = IntentAnalyzer()
         intent = await intent_classifier.analyze(
             original_prompt
         )
