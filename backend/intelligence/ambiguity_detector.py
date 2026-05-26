@@ -26,20 +26,41 @@ class AmbiguityDetector:
         """
 
         system_prompt = """
-You are an ambiguity detector.
+You are an advanced ambiguity detector.
 
-Analyze the prompt and return ONLY valid JSON:
+Analyze the prompt and return ONLY valid JSON.
+
+Detect:
+- vague requirements
+- missing technical details
+- missing architecture decisions
+- missing UX/design choices
+- deployment uncertainty
+
+Return format:
 
 {
-  "ambiguous_terms": ["term1", "term2"],
+  "ambiguous_terms": [
+    "term1",
+    "term2"
+  ],
   "clarification_needed": true,
   "ambiguity_score": 0.0,
   "missing_requirements": [
-    "tech_stack",
+    "framework",
+    "authentication",
+    "database",
     "design_style",
-    "features"
-  ]
+    "responsive_behavior"
+  ],
+  "risk_level": "low|medium|high"
 }
+
+Rules:
+- ambiguity_score must be between 0 and 1
+- high ambiguity = vague prompt
+- low ambiguity = detailed prompt
+- infer realistic missing requirements
 """
 
         try:
@@ -81,9 +102,12 @@ Analyze the prompt and return ONLY valid JSON:
             return {
                 "ambiguous_terms": [],
                 "clarification_needed": True,
-                "ambiguity_score": 0.7,
+                "ambiguity_score": 0.75,
                 "missing_requirements": [
-                    "tech_stack",
-                    "features"
-                ]
+                    "framework",
+                    "design_style",
+                    "authentication",
+                    "responsive_behavior"
+                ],
+                "risk_level": "medium"
             }
