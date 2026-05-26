@@ -1,6 +1,8 @@
 from typing import Dict, Any
 import asyncio
+import logging
 
+logger = logging.getLogger(__name__)
 from intelligence.intent_classifier import IntentClassifier
 from intelligence.context_detector import ContextDetector
 from intelligence.ambiguity_detector import AmbiguityDetector
@@ -38,6 +40,7 @@ class IntelligenceOrchestrator:
         """
 
         # Run analysis in parallel
+        logger.info("Starting intelligence pipeline")
         intent_task = self.intent_classifier.analyze(prompt)
         context_task = self.context_detector.detect(prompt)
         ambiguity_task = self.ambiguity_detector.detect(prompt)
@@ -55,6 +58,8 @@ class IntelligenceOrchestrator:
             ambiguity=ambiguity
         )
 
+        logger.info("Prompt analyzed successfully")
+        
         return {
             "intent": intent,
             "context": context,
