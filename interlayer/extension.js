@@ -28,14 +28,14 @@ async function handleWebviewMessage(msg, context) {
   switch (msg.command) {
     case 'analyze':
       currentPrompt = msg.prompt;
-      await runAnalysisPipeline(msg.prompt, context);
+      await runAnalysisPipeline(msg.prompt, msg.model, context);
       break;
 
     case 'selectOption':
       break;
 
     case 'build':
-      await runBuildPipeline(msg.prompt, msg.selections, msg.intent, msg.context, context);
+      await runBuildPipeline(msg.prompt, msg.selections, msg.intent, msg.context, msg.model, context);
       break;
 
     case 'copyPrompt':
@@ -204,12 +204,12 @@ function showSidebarPanel(context) {
 // =====================================================
 //  ANALYSIS PIPELINE
 // =====================================================
-async function runAnalysisPipeline(prompt, context) {
+async function runAnalysisPipeline(prompt, model, context) {
   const backendUrl = getBackendUrl(context);
   postToSidebar({ command: 'analysisStart' });
 
   try {
-    const response = await axios.post(`${backendUrl}/api/analyze`, { prompt }, { timeout: 30000 });
+    const response = await axios.post(`${backendUrl}/api/analyze`, { prompt, model }, { timeout: 30000 });
     currentAnalysis = response.data;
     postToSidebar({ command: 'analysisResult', data: currentAnalysis });
   } catch (err) {
@@ -222,7 +222,7 @@ async function runAnalysisPipeline(prompt, context) {
 // =====================================================
 //  BUILD PIPELINE
 // =====================================================
-async function runBuildPipeline(prompt, selections, intent, ctx, context) {
+async function runBuildPipeline(prompt, selections, intent, ctx, model, context) {
   const backendUrl = getBackendUrl(context);
   postToSidebar({ command: 'buildStart' });
 
@@ -232,6 +232,7 @@ async function runBuildPipeline(prompt, selections, intent, ctx, context) {
       selections,
       intent: intent || currentAnalysis?.intent,
       context: ctx || currentAnalysis?.context,
+      model
     }, { timeout: 60000 });
 
     currentEnhancedPrompt = response.data.enhanced_prompt;
@@ -396,6 +397,12 @@ textarea{width:100%;min-height:115px;background:transparent;border:none;outline:
 textarea::placeholder{color:var(--z300)}
 .if{display:flex;justify-content:flex-end;gap:5px;margin-top:4px}
 .mb{font-size:8px;padding:2px 6px;border-radius:4px;background:var(--z100);color:var(--z500);font-family:monospace;font-weight:700;text-transform:uppercase}
+.ms{display:flex;align-items:center;gap:8px;margin-top:10px;background:var(--z50);border:1px solid var(--z200);border-radius:8px;padding:8px 12px;transition:var(--tr);position:relative}
+.ms:focus-within{border-color:var(--red);background:#fff;box-shadow:0 0 0 3px rgba(240,98,96,.07)}
+.ms-ic{color:var(--z400);display:flex;align-items:center;flex-shrink:0}
+.ms-lb{font-size:8px;font-weight:900;text-transform:uppercase;letter-spacing:.14em;color:var(--z400);flex-shrink:0;white-space:nowrap}
+.ms select{flex:1;border:none;background:transparent;outline:none;font-size:10px;font-family:monospace;font-weight:700;color:var(--z900);appearance:none;cursor:pointer;min-width:0}
+.ms-arrow{color:var(--z400);pointer-events:none;display:flex;position:absolute;right:10px}
 .bp{width:100%;margin-top:11px;background:var(--red);color:#fff;border:none;padding:12px 17px;
   border-radius:8px;font-size:9px;font-weight:900;text-transform:uppercase;letter-spacing:.15em;
   cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;
@@ -508,7 +515,7 @@ footer{background:var(--z50);border-top:1px solid var(--z100);padding:8px 17px;
 <div class="sc" id="scr">
 
   <!-- STEP 01 -->
-  <section class="rv" data-step="1">
+  <section class="rv" data-step="1" id="s1">
     <div class="sh">
       <div style="display:flex;align-items:center;gap:10px">
         <div class="sb">01</div>
@@ -529,6 +536,20 @@ footer{background:var(--z50);border-top:1px solid var(--z100);padding:8px 17px;
         <span class="mb" id="lnC">ln 1</span>
         <span class="mb" id="chC">ch 0</span>
       </div>
+    </div>
+    <!-- MODEL SELECTOR -->
+    <div class="ms">
+      <div class="ms-ic"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></div>
+      <span class="ms-lb">Model</span>
+      <select id="selModel">
+        <option value="gemini-2.0-flash">✦ Gemini 2.0 Flash (Google)</option>
+        <option value="gemini-1.5-pro">✦ Gemini 1.5 Pro (Google)</option>
+        <option value="grok-3-mini">⚡ Grok 3 Mini (xAI)</option>
+        <option value="grok-2-preview">⚡ Grok 2 Preview (xAI)</option>
+        <option value="deepseek-coder:6.7b">⚙ DeepSeek Coder 6.7B (Ollama)</option>
+        <option value="claude-3-5-sonnet-20240620">◆ Claude 3.5 Sonnet (Anthropic)</option>
+      </select>
+      <div class="ms-arrow"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></div>
     </div>
     <div class="er" id="aErr"></div>
     <button class="bp" id="aBtn">
@@ -592,10 +613,16 @@ footer{background:var(--z50);border-top:1px solid var(--z100);padding:8px 17px;
         </div>
       </div>
       <div class="er" id="bErr"></div>
-      <button class="bd" id="bBtn">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
-        <span id="bTxt">Continue to Build</span>
-      </button>
+      <div style="display:flex;gap:10px;margin-top:11px">
+        <button class="bd" id="bBtnBack" style="background:var(--z800);flex:1;width:auto;padding:12px 10px;margin-top:0" title="Back to Step 1">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+          <span>Back</span>
+        </button>
+        <button class="bd" id="bBtn" style="flex:1;width:auto;padding:12px 10px;margin-top:0">
+          <span id="bTxt">Next</span>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
+        </button>
+      </div>
     </div>
   </section>
 
@@ -647,10 +674,16 @@ footer{background:var(--z50);border-top:1px solid var(--z100);padding:8px 17px;
         <span>v2.4.0-stable</span>
       </div>
     </div>
-    <button class="bp" id="rstBtn" style="margin-top:10px;background:var(--z900);box-shadow:none">
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.31"/></svg>
-      <span>New Prompt</span>
-    </button>
+    <div style="display:flex;gap:10px;margin-top:10px">
+      <button class="bp" id="cBtnBack" style="background:var(--z800);box-shadow:none;flex:1;width:auto;padding:12px 10px;margin-top:0" title="Back to Step 2">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+        <span>Back</span>
+      </button>
+      <button class="bp" id="rstBtn" style="background:var(--z900);box-shadow:none;flex:1;width:auto;padding:12px 10px;margin-top:0">
+        <span>New Prompt</span>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.31"/></svg>
+      </button>
+    </div>
   </section>
 
 </div><!-- /sc -->
@@ -669,7 +702,7 @@ footer{background:var(--z50);border-top:1px solid var(--z100);padding:8px 17px;
   const g = id => document.getElementById(id);
   const pi=g('promptInput'),chC=g('chC'),lnC=g('lnC');
   const aBtn=g('aBtn'),aTxt=g('aTxt'),aErr=g('aErr');
-  const s2=g('s2'),s3=g('s3'),cTi=g('cTi'),iTgs=g('iTgs');
+  const s1=g('s1'),s2=g('s2'),s3=g('s3'),cTi=g('cTi'),iTgs=g('iTgs');
   const bBtn=g('bBtn'),bTxt=g('bTxt'),bErr=g('bErr');
   const stIdle=g('stIdle'),stLoad=g('stLoad'),stRes=g('stRes');
   const rTxt=g('rTxt'),tSt=g('tSt');
@@ -691,7 +724,11 @@ footer{background:var(--z50);border-top:1px solid var(--z100);padding:8px 17px;
   function show(el){
     el.style.display='';
     setTimeout(()=>el.classList.add('on'),30);
-    setTimeout(()=>scr.scrollTo({top:scr.scrollHeight,behavior:'smooth'}),90);
+    setTimeout(()=>scr.scrollTo({top:0,behavior:'smooth'}),90);
+  }
+  function hide(el){
+    el.classList.remove('on');
+    setTimeout(()=>el.style.display='none', 400);
   }
 
   pi.addEventListener('input',()=>{
@@ -719,19 +756,37 @@ footer{background:var(--z50);border-top:1px solid var(--z100);padding:8px 17px;
     aErr.style.display='none';
     aBtn.disabled=true;aTxt.textContent='Analyzing...';
     t0=Date.now();status('Analyzing...',true);
-    vscode.postMessage({command:'analyze',prompt:p});
+    vscode.postMessage({command:'analyze',prompt:p,model:g('selModel').value});
   });
 
   bBtn.addEventListener('click',()=>{
     bErr.style.display='none';
     bBtn.disabled=true;bTxt.textContent='Building...';
     t0=Date.now();status('Building...',true);
-    if(s3.style.display==='none') show(s3);
-    term('load');tSt.textContent='STDOUT: COMPILING...';
+    hide(s2);
+    setTimeout(()=>{
+      if(s3.style.display==='none') show(s3);
+      term('load');tSt.textContent='STDOUT: COMPILING...';
+    }, 400);
     vscode.postMessage({command:'build',prompt:pi.value.trim(),
+      model:g('selModel').value,
       selections:{framework:g('selFW').value,styling:g('selST').value,
         data:g('selDL').value,complexity:g('selCX').value}});
   });
+
+  const bBtnBack = g('bBtnBack'), cBtnBack = g('cBtnBack');
+  if(bBtnBack) {
+    bBtnBack.addEventListener('click', () => {
+      hide(s2);
+      setTimeout(() => show(s1), 400);
+    });
+  }
+  if(cBtnBack) {
+    cBtnBack.addEventListener('click', () => {
+      hide(s3);
+      setTimeout(() => show(s2), 400);
+    });
+  }
 
   copyBtn.addEventListener('click',()=>{
     vscode.postMessage({command:'copyPrompt'});
@@ -749,6 +804,7 @@ footer{background:var(--z50);border-top:1px solid var(--z100);padding:8px 17px;
     aErr.style.display='none';bErr.style.display='none';
     s2.style.display='none';s2.classList.remove('on');
     s3.style.display='none';s3.classList.remove('on');
+    show(s1);
     term('idle');tSt.textContent='STDOUT: IDLE';
     dots(1);status('Nominal',true);
     scr.scrollTo({top:0,behavior:'smooth'});
@@ -762,14 +818,19 @@ footer{background:var(--z50);border-top:1px solid var(--z100);padding:8px 17px;
         latV.textContent=(Date.now()-t0)+'ms';
         aBtn.disabled=false;aTxt.textContent='Analyze Intent';
         const d=m.data,tags=[];
-        if(d.intent) tags.push({l:d.intent,c:'r'});
-        if(d.complexity) tags.push({l:d.complexity,c:'dk'});
-        if(Array.isArray(d.clarifications))
-          d.clarifications.slice(0,3).forEach(c=>tags.push({l:c.substring(0,28),c:''}));
+        const intentStr = (d.intent && d.intent.primary_intent) ? d.intent.primary_intent : 'General';
+        const complexityStr = (d.suggestions && d.suggestions.estimated_complexity) ? d.suggestions.estimated_complexity : ((d.intent && d.intent.complexity) ? d.intent.complexity : 'Medium');
+        tags.push({l:intentStr,c:'r'});
+        tags.push({l:complexityStr,c:'dk'});
+        const clarifications = (d.suggestions && d.suggestions.questions) ? d.suggestions.questions : [];
+        clarifications.slice(0,3).forEach(q=>tags.push({l:q.question.substring(0,28),c:''}));
         iTgs.innerHTML=tags.map(t=>'<span class="tg '+t.c+'">'+t.l+'</span>').join('')
           ||'<span class="tg">General prompt</span>';
-        if(d.intent) cTi.textContent='CONFIGURING: '+d.intent.toUpperCase().substring(0,22);
-        dots(2);status('Analysis done',true);show(s2);break;
+        cTi.textContent='CONFIGURING: '+intentStr.toUpperCase().substring(0,22);
+        dots(2);status('Analysis done',true);
+        hide(s1);
+        setTimeout(()=>{show(s2);}, 400);
+        break;
       }
       case 'analysisError':
         latV.textContent=(Date.now()-t0)+'ms';
@@ -777,8 +838,7 @@ footer{background:var(--z50);border-top:1px solid var(--z100);padding:8px 17px;
         aErr.textContent='Error: '+m.message;aErr.style.display='block';
         status('Error',false);break;
       case 'buildStart':
-        term('load');tSt.textContent='STDOUT: COMPILING...';
-        if(s3.style.display==='none') show(s3);break;
+        break;
       case 'buildResult':{
         latV.textContent=(Date.now()-t0)+'ms';
         bBtn.disabled=false;bTxt.textContent='Continue to Build';
