@@ -4,6 +4,7 @@ from openai import OpenAI
 from core.config import settings
 from typing import Dict, List, Any
 from intelligence.orchestration import IntelligenceOrchestrator
+from intelligence.prompt_enhancer import PromptEnhancer
 
 # Initialize AI client based on provider
 if settings.AI_PROVIDER == "xai":
@@ -260,26 +261,35 @@ User Selections:
 
 # Main service functions
 
-async def analyze_prompt(prompt: str) -> Dict[str, Any]:
+async def build_enhanced_prompt(
+    original_prompt: str,
+    selections: Dict[str, str],
+    intent: Dict = None,
+    context: Dict = None
+) -> Dict[str, Any]:
     """
-    Full analysis pipeline powered by
-    Intelligence Orchestration Layer.
+    Build enhanced prompt using
+    Prompt Enhancement Layer.
     """
 
-    orchestrator = IntelligenceOrchestrator()
+    prompt_enhancer = PromptEnhancer()
 
-    return await orchestrator.analyze_prompt(prompt)
-    
-async def build_enhanced_prompt(original_prompt: str, selections: Dict[str, str], intent: Dict = None, context: Dict = None) -> Dict[str, Any]:
-    """Build enhanced prompt with selections"""
-    prompt_builder = PromptBuilder()
-    
-    # If intent/context not provided, analyze them
+    # Auto-analyze if missing
     if not intent:
-        intent_analyzer = IntentAnalyzer()
-        intent = await intent_analyzer.analyze(original_prompt)
+        intent_classifier = IntentClassifier()
+        intent = await intent_classifier.analyze(
+            original_prompt
+        )
+
     if not context:
         context_detector = ContextDetector()
-        context = await context_detector.detect(original_prompt)
-    
-    return await prompt_builder.build_enhanced_prompt(original_prompt, selections, intent, context)
+        context = await context_detector.detect(
+            original_prompt
+        )
+
+    return await prompt_enhancer.enhance_prompt(
+        original_prompt=original_prompt,
+        selections=selections,
+        intent=intent,
+        context=context
+    )
