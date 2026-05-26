@@ -26,16 +26,9 @@ async function handleWebviewMessage(msg, context) {
   const backendUrl = getBackendUrl(context);
 
   switch (msg.command) {
-    case 'analyze':
+    case 'nextStage':
       currentPrompt = msg.prompt;
-      await runAnalysisPipeline(msg.prompt, msg.model, context);
-      break;
-
-    case 'selectOption':
-      break;
-
-    case 'build':
-      await runBuildPipeline(msg.prompt, msg.selections, msg.intent, msg.context, msg.model, context);
+      await runNextStage(msg.prompt, msg.selections, msg.model, context);
       break;
 
     case 'copyPrompt':
@@ -161,7 +154,7 @@ async function enhanceSelectedPrompt(context) {
   }
 
   postToSidebar({ command: 'setPrompt', prompt: selected });
-  await runAnalysisPipeline(selected, context);
+  await runNextStage(selected, null, null, context);
 }
 
 // =====================================================
@@ -202,61 +195,42 @@ function showSidebarPanel(context) {
 }
 
 // =====================================================
-//  ANALYSIS PIPELINE
+//  STAGE PIPELINE (ADVANCED AI WORKFLOW)
 // =====================================================
-async function runAnalysisPipeline(prompt, model, context) {
+async function runNextStage(prompt, selections, model, context) {
   const backendUrl = getBackendUrl(context);
-  postToSidebar({ command: 'analysisStart' });
+  postToSidebar({ command: 'stageStart' });
 
   try {
-    const response = await axios.post(`${backendUrl}/api/analyze`, { prompt, model }, { timeout: 30000 });
-    currentAnalysis = response.data;
-    postToSidebar({ command: 'analysisResult', data: currentAnalysis });
+    const response = await axios.post(`${backendUrl}/api/next`, { prompt, selections, model }, { timeout: 60000 });
+    const state = response.data;
+
+    if (state.stage === 'final') {
+      currentEnhancedPrompt = state.final_prompt;
+      
+      // Save to history
+      const history = context.globalState.get('vibeHistory') || [];
+      history.unshift({
+        id: Date.now().toString(),
+        prompt,
+        enhanced_prompt: currentEnhancedPrompt,
+        selections: state.selections,
+        created_at: new Date().toISOString(),
+        is_favorite: false,
+        word_count: currentEnhancedPrompt.split(/\\s+/).length,
+      });
+      if (history.length > 50) history.pop();
+      context.globalState.update('vibeHistory', history);
+
+      postToSidebar({ command: 'stageFinal', data: state, history });
+    } else {
+      currentAnalysis = state.tags; // Store tags for context
+      postToSidebar({ command: 'stageResult', data: state });
+    }
   } catch (err) {
     const msg = err.response?.data?.detail || err.message || 'Unknown error';
-    postToSidebar({ command: 'analysisError', message: msg });
-    vscode.window.showErrorMessage(`Vibe: Analysis failed — ${msg}`);
-  }
-}
-
-// =====================================================
-//  BUILD PIPELINE
-// =====================================================
-async function runBuildPipeline(prompt, selections, intent, ctx, model, context) {
-  const backendUrl = getBackendUrl(context);
-  postToSidebar({ command: 'buildStart' });
-
-  try {
-    const response = await axios.post(`${backendUrl}/api/build`, {
-      prompt,
-      selections,
-      intent: intent || currentAnalysis?.intent,
-      context: ctx || currentAnalysis?.context,
-      model
-    }, { timeout: 60000 });
-
-    currentEnhancedPrompt = response.data.enhanced_prompt;
-
-    // Save to history
-    const history = context.globalState.get('vibeHistory') || [];
-    history.unshift({
-      id: Date.now().toString(),
-      prompt,
-      enhanced_prompt: currentEnhancedPrompt,
-      selections,
-      created_at: new Date().toISOString(),
-      is_favorite: false,
-      word_count: currentEnhancedPrompt.split(/\s+/).length,
-    });
-    if (history.length > 50) history.pop();
-    context.globalState.update('vibeHistory', history);
-
-    postToSidebar({ command: 'buildResult', data: response.data, history });
-
-  } catch (err) {
-    const msg = err.response?.data?.detail || err.message || 'Unknown error';
-    postToSidebar({ command: 'buildError', message: msg });
-    vscode.window.showErrorMessage(`Vibe: Build failed — ${msg}`);
+    postToSidebar({ command: 'stageError', message: msg });
+    vscode.window.showErrorMessage(`Vibe: Stage failed — ${msg}`);
   }
 }
 
@@ -578,39 +552,8 @@ footer{background:var(--z50);border-top:1px solid var(--z100);padding:8px 17px;
       </div>
       <div class="lb" style="margin-bottom:5px"><div class="ld"></div> Detected Intent</div>
       <div class="tgs" id="iTgs"><span class="tg">Awaiting analysis...</span></div>
-      <div class="fg">
-        <div class="fi">
-          <label class="lb"><div class="ld"></div> Framework</label>
-          <div class="sw">
-            <div class="fi-i"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4.03 3-9 3S3 13.66 3 12"/><path d="M3 5v14c0 1.66 4.03 3 9 3s9-1.34 9-3V5"/></svg></div>
-            <select id="selFW"><option>React</option><option>Vue</option><option>Angular</option><option>Svelte</option><option>Next.js</option><option>Vanilla JS</option></select>
-            <div class="chv"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></div>
-          </div>
-        </div>
-        <div class="fi">
-          <label class="lb"><div class="ld"></div> Styling</label>
-          <div class="sw">
-            <div class="fi-i"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.5" cy="6.5" r=".5"/><circle cx="17.5" cy="10.5" r=".5"/><circle cx="8.5" cy="7.5" r=".5"/><circle cx="6.5" cy="12.5" r=".5"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/></svg></div>
-            <select id="selST"><option>Tailwind CSS</option><option>shadcn/ui</option><option>Vanilla CSS</option><option>CSS Modules</option><option>Styled Components</option></select>
-            <div class="chv"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></div>
-          </div>
-        </div>
-        <div class="fi">
-          <label class="lb"><div class="ld"></div> Data Layer</label>
-          <div class="sw">
-            <div class="fi-i"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></div>
-            <select id="selDL"><option>REST API</option><option>GraphQL</option><option>SQL Database</option><option>Supabase</option><option>Firebase</option><option>Mock/Static</option></select>
-            <div class="chv"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></div>
-          </div>
-        </div>
-        <div class="fi">
-          <label class="lb"><div class="ld"></div> Complexity</label>
-          <div class="sw">
-            <div class="fi-i"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></div>
-            <select id="selCX"><option>Production-Ready</option><option>MVP / Prototype</option><option>Enterprise</option><option>Minimal</option></select>
-            <div class="chv"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></div>
-          </div>
-        </div>
+      <div class="fg" id="dynamicQuestions">
+        <!-- Questions injected here by JS -->
       </div>
       <div class="er" id="bErr"></div>
       <div style="display:flex;gap:10px;margin-top:11px">
@@ -647,15 +590,11 @@ footer{background:var(--z50);border-top:1px solid var(--z100);padding:8px 17px;
           <p class="i-txt"><span class="cr">&gt;</span> Awaiting build completion...</p>
           <div class="rb"><div class="rdot"></div><span>Ready to Transmit</span></div>
         </div>
-        <div id="stLoad" style="display:none;width:100%;max-width:290px;flex-direction:column;gap:8px">
-          <div class="sk-r"><div class="sk-d"></div><span class="sk-l">Kernel_Processing...</span></div>
-          <div class="sk" style="width:100%"></div>
-          <div class="sk" style="width:75%;animation-delay:.2s"></div>
-          <div class="sk" style="width:88%;animation-delay:.4s"></div>
-          <div class="sk" style="width:55%;animation-delay:.6s"></div>
+        <div id="stLoad" style="display:none;width:100%;max-width:290px;flex-direction:column;gap:8px;font-family:monospace;font-size:11px;color:var(--z400)">
+          <!-- Dynamic terminal output -->
         </div>
         <div id="stRes" style="display:none;width:100%;flex-direction:column;gap:9px">
-          <div class="r-ok">[SUCCESS] COMPILATION COMPLETE</div>
+          <div class="r-ok" id="rOk" style="font-size:11px; margin-bottom:10px;"></div>
           <div id="rTxt"></div>
           <div class="ra">
             <button class="ab" id="copyBtn">
@@ -709,6 +648,7 @@ footer{background:var(--z50);border-top:1px solid var(--z100);padding:8px 17px;
   const copyBtn=g('copyBtn'),sendBtn=g('sendBtn'),rstBtn=g('rstBtn');
   const latV=g('latV'),fSt=g('fSt'),scr=g('scr'),spot=g('spot');
   let t0=0;
+  let currentSelections = {};
 
   window.addEventListener('mousemove',e=>{
     spot.style.setProperty('--mx',e.clientX+'px');
@@ -745,9 +685,35 @@ footer{background:var(--z50);border-top:1px solid var(--z100);padding:8px 17px;
     stLoad.style.display=s==='load'?'flex':'none';
     stRes.style.display =s==='res' ?'flex':'none';
   }
-  function type(el,txt,spd=11){
+  function type(el,txt,spd=11,cb=null){
     el.textContent='';let i=0;
-    const t=setInterval(()=>{if(i<txt.length){el.textContent+=txt[i];i++;}else clearInterval(t);},spd);
+    const t=setInterval(()=>{
+      if(i<txt.length){el.textContent+=txt[i];i++;}
+      else { clearInterval(t); if(cb) cb(); }
+    },spd);
+  }
+  
+  const termLines = [
+    "[BOOTING AI ENGINE...]",
+    "[ANALYZING USER INTENT...]",
+    "[PARAMETER DETECTION ACTIVE]",
+    "[REFINING PROMPT...]",
+    "[GENERATING FINAL OUTPUT...]"
+  ];
+
+  function runTerminalLoad() {
+    stLoad.innerHTML = '';
+    let tOffset = 0;
+    termLines.forEach((line, i) => {
+      setTimeout(() => {
+        if (stLoad.style.display === 'none') return;
+        const div = document.createElement('div');
+        div.style.color = 'var(--z400)';
+        stLoad.appendChild(div);
+        type(div, line, 15);
+      }, tOffset);
+      tOffset += 500 + Math.random() * 300;
+    });
   }
 
   aBtn.addEventListener('click',()=>{
@@ -756,22 +722,23 @@ footer{background:var(--z50);border-top:1px solid var(--z100);padding:8px 17px;
     aErr.style.display='none';
     aBtn.disabled=true;aTxt.textContent='Analyzing...';
     t0=Date.now();status('Analyzing...',true);
-    vscode.postMessage({command:'analyze',prompt:p,model:g('selModel').value});
+    currentSelections = {};
+    vscode.postMessage({command:'nextStage',prompt:p,model:g('selModel').value, selections:{}});
   });
 
   bBtn.addEventListener('click',()=>{
     bErr.style.display='none';
-    bBtn.disabled=true;bTxt.textContent='Building...';
-    t0=Date.now();status('Building...',true);
-    hide(s2);
-    setTimeout(()=>{
-      if(s3.style.display==='none') show(s3);
-      term('load');tSt.textContent='STDOUT: COMPILING...';
-    }, 400);
-    vscode.postMessage({command:'build',prompt:pi.value.trim(),
+    bBtn.disabled=true;bTxt.textContent='Processing...';
+    t0=Date.now();status('Processing...',true);
+    
+    const dynSels = document.querySelectorAll('#dynamicQuestions select');
+    dynSels.forEach(s => {
+      currentSelections[s.dataset.q] = s.value;
+    });
+
+    vscode.postMessage({command:'nextStage',prompt:pi.value.trim(),
       model:g('selModel').value,
-      selections:{framework:g('selFW').value,styling:g('selST').value,
-        data:g('selDL').value,complexity:g('selCX').value}});
+      selections: currentSelections});
   });
 
   const bBtnBack = g('bBtnBack'), cBtnBack = g('cBtnBack');
@@ -802,6 +769,7 @@ footer{background:var(--z50);border-top:1px solid var(--z100);padding:8px 17px;
     pi.value='';chC.textContent='ch 0';lnC.textContent='ln 1';
     aBtn.disabled=false;aTxt.textContent='Analyze Intent';
     aErr.style.display='none';bErr.style.display='none';
+    currentSelections = {};
     s2.style.display='none';s2.classList.remove('on');
     s3.style.display='none';s3.classList.remove('on');
     show(s1);
@@ -813,45 +781,111 @@ footer{background:var(--z50);border-top:1px solid var(--z100);padding:8px 17px;
   window.addEventListener('message',e=>{
     const m=e.data;
     switch(m.command){
-      case 'analysisStart': break;
-      case 'analysisResult':{
+      case 'stageStart': break;
+      case 'stageResult':{
         latV.textContent=(Date.now()-t0)+'ms';
         aBtn.disabled=false;aTxt.textContent='Analyze Intent';
-        const d=m.data,tags=[];
-        const intentStr = (d.intent && d.intent.primary_intent) ? d.intent.primary_intent : 'General';
-        const complexityStr = (d.suggestions && d.suggestions.estimated_complexity) ? d.suggestions.estimated_complexity : ((d.intent && d.intent.complexity) ? d.intent.complexity : 'Medium');
+        bBtn.disabled=false;bTxt.textContent='Next';
+        
+        const state=m.data;
+        const tagsObj=state.tags || {};
+        const intentObj = tagsObj.intent || {};
+        const intentStr = intentObj.primary_intent || 'General';
+        const complexityStr = state.estimated_complexity || 'Medium';
+        const conf = state.confidence || 0.5;
+        
+        const tags = [];
         tags.push({l:intentStr,c:'r'});
         tags.push({l:complexityStr,c:'dk'});
-        const clarifications = (d.suggestions && d.suggestions.questions) ? d.suggestions.questions : [];
-        clarifications.slice(0,3).forEach(q=>tags.push({l:q.question.substring(0,28),c:''}));
-        iTgs.innerHTML=tags.map(t=>'<span class="tg '+t.c+'">'+t.l+'</span>').join('')
+        tags.push({l:Math.round(conf * 100) + '% Conf',c:'ok'});
+        
+        const questions = state.questions || [];
+        questions.slice(0,2).forEach(q=>tags.push({l:q.title.substring(0,28),c:''}));
+
+        iTgs.innerHTML=tags.map(t=>'<span class="tg '+(t.c||'')+'">'+t.l+'</span>').join('')
           ||'<span class="tg">General prompt</span>';
-        cTi.textContent='CONFIGURING: '+intentStr.toUpperCase().substring(0,22);
-        dots(2);status('Analysis done',true);
-        hide(s1);
-        setTimeout(()=>{show(s2);}, 400);
+        
+        cTi.textContent='CONFIGURING: ' + intentStr.toUpperCase().substring(0,22);
+        
+        
+        
+        // Render dynamic questions
+        const dynQ = g('dynamicQuestions');
+        dynQ.innerHTML = '';
+        if (questions.length > 0) {
+          questions.forEach((q, i) => {
+            const fi = document.createElement('div');
+            fi.className = 'fi';
+            
+            const label = document.createElement('label');
+            label.className = 'lb';
+            label.innerHTML = '<div class="ld"></div> ' + q.title;
+            fi.appendChild(label);
+            
+            if (q.why_it_matters) {
+              const why = document.createElement('div');
+              why.style = 'font-size:7px; color:var(--z400); margin-bottom:4px; margin-top:-2px; padding-left:14px;';
+              why.textContent = q.why_it_matters;
+              fi.appendChild(why);
+            }
+            
+            const sw = document.createElement('div');
+            sw.className = 'sw';
+            sw.innerHTML = '<div class="fi-i"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/></svg></div>';
+            
+            const sel = document.createElement('select');
+            sel.id = 'selDyn_' + i;
+            sel.dataset.q = q.title;
+            (q.options || []).forEach(opt => {
+              const o = document.createElement('option');
+              o.value = opt;
+              o.textContent = opt;
+              sel.appendChild(o);
+            });
+            sw.appendChild(sel);
+            
+            const chv = document.createElement('div');
+            chv.className = 'chv';
+            chv.innerHTML = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>';
+            sw.appendChild(chv);
+            
+            fi.appendChild(sw);
+            dynQ.appendChild(fi);
+          });
+        }
+
+        dots(2);status('Questions Generated',true);
+        if(s1.style.display !== 'none') {
+            hide(s1);
+            setTimeout(()=>{show(s2);}, 400);
+        }
         break;
       }
-      case 'analysisError':
+      case 'stageError':
         latV.textContent=(Date.now()-t0)+'ms';
         aBtn.disabled=false;aTxt.textContent='Analyze Intent';
+        bBtn.disabled=false;bTxt.textContent='Next';
         aErr.textContent='Error: '+m.message;aErr.style.display='block';
+        bErr.textContent='Error: '+m.message;bErr.style.display='block';
         status('Error',false);break;
-      case 'buildStart':
-        break;
-      case 'buildResult':{
+      case 'stageFinal':{
         latV.textContent=(Date.now()-t0)+'ms';
-        bBtn.disabled=false;bTxt.textContent='Continue to Build';
+        aBtn.disabled=false;aTxt.textContent='Analyze Intent';
+        bBtn.disabled=false;bTxt.textContent='Next';
         term('res');tSt.textContent='STDOUT: READY';
         dots(3);status('Build complete',true);
-        type(rTxt,m.data.enhanced_prompt||'');break;
+        
+        hide(s1); hide(s2);
+        setTimeout(()=>{
+          if(s3.style.display==='none') show(s3);
+          const rOk = g('rOk');
+          type(rOk, '[SUCCESS] COMPILATION COMPLETE', 10, () => {
+            type(rTxt, m.data.final_prompt || '', 5);
+          });
+        }, 400);
+        
+        break;
       }
-      case 'buildError':
-        latV.textContent=(Date.now()-t0)+'ms';
-        bBtn.disabled=false;bTxt.textContent='Continue to Build';
-        term('idle');tSt.textContent='STDOUT: ERROR';
-        bErr.textContent='Error: '+m.message;bErr.style.display='block';
-        status('Build failed',false);break;
       case 'setPrompt':
         pi.value=m.prompt||'';
         chC.textContent='ch '+(m.prompt||'').length;
