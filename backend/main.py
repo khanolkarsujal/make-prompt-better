@@ -1,14 +1,20 @@
+import os
+import sys
+# Add project root to PYTHONPATH for core imports
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if PROJECT_ROOT not in sys.path:
+    sys.path.append(PROJECT_ROOT)
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
-import os
 
 load_dotenv()
 
-from core.config import settings
-from routes.generate import router as generate_router
-from routes.history import router as history_router
-from routes.templates import router as templates_router
+from backend.core.config import settings
+from .routes.generate import router as generate_router
+from .routes.history import router as history_router
+from .routes.templates import router as templates_router
 
 app = FastAPI(title="Vibe Prompt Engine", version="1.0.0")
 

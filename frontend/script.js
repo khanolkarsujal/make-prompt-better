@@ -142,7 +142,7 @@ function renderQuestions(questions) {
     // Create label
     const label = document.createElement('label');
     label.className = 'block text-[10px] font-black text-zinc-400 uppercase tracking-[0.15em] flex items-center font-sans';
-    label.innerHTML = `<span class="w-1 h-1 bg-zinc-300 rounded-full mr-2"></span>${q.question}`;
+    label.innerHTML = `<span class="w-1 h-1 bg-zinc-300 rounded-full mr-2"></span>${q.title}`;
     
     // Create select field
     const fieldContainer = document.createElement('div');
@@ -182,7 +182,7 @@ function renderQuestions(questions) {
     select.addEventListener('change', (e) => {
       const qIdx = parseInt(e.target.dataset.question);
       const question = questions[qIdx];
-      selections[question.question] = e.target.value;
+      selections[question.title] = e.target.value;
     });
   });
 }
@@ -469,7 +469,7 @@ function displayQuestions(questions) {
     card.innerHTML = `
       <div class="question-header">
         <div class="question-num">${idx + 1}</div>
-        <div class="question-text">${q.question}</div>
+        <div class="question-text">${q.title}</div>
         <div class="question-category">${q.category || ''}</div>
       </div>
       <div class="options-grid">
@@ -497,7 +497,7 @@ function selectOption(qIdx, oIdx, value) {
   document.getElementById(`opt-${qIdx}-${oIdx}`).classList.add('selected');
 
   const q = currentAnalysis.suggestions.questions[qIdx];
-  selections[q.question] = value;
+  selections[q.title] = value;
 
   updateProgress();
   activatePipelineStep(5);

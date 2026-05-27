@@ -111,7 +111,7 @@ function registerSidebarProvider(context) {
     resolveWebviewView(webviewView) {
       sidebarView = webviewView;
       webviewView.webview.options = { enableScripts: true };
-      webviewView.webview.html = getSidebarHtml(context);
+      webviewView.webview.html = getSidebarHtml(context, webviewView.webview);
 
       // Load history
       const history = context.globalState.get('vibeHistory') || [];
@@ -180,7 +180,7 @@ function showSidebarPanel(context) {
     { enableScripts: true, retainContextWhenHidden: true }
   );
 
-  sidebarPanel.webview.html = getSidebarHtml(context);
+  sidebarPanel.webview.html = getSidebarHtml(context, sidebarPanel.webview);
 
   // Load history from global state
   const history = context.globalState.get('vibeHistory') || [];
@@ -516,12 +516,8 @@ footer{background:var(--z50);border-top:1px solid var(--z100);padding:8px 17px;
       <div class="ms-ic"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></div>
       <span class="ms-lb">Model</span>
       <select id="selModel">
-        <option value="gemini-2.0-flash">✦ Gemini 2.0 Flash (Google)</option>
-        <option value="gemini-1.5-pro">✦ Gemini 1.5 Pro (Google)</option>
-        <option value="grok-3-mini">⚡ Grok 3 Mini (xAI)</option>
-        <option value="grok-2-preview">⚡ Grok 2 Preview (xAI)</option>
-        <option value="deepseek-coder:6.7b">⚙ DeepSeek Coder 6.7B (Ollama)</option>
-        <option value="claude-3-5-sonnet-20240620">◆ Claude 3.5 Sonnet (Anthropic)</option>
+        <option value="qwen2.5:7b" selected>🧠 Qwen 2.5 7B (Ollama)</option>
+        <option value="qwen2.5:14b">🧠 Qwen 2.5 14B (Ollama)</option>
       </select>
       <div class="ms-arrow"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></div>
     </div>
@@ -649,6 +645,7 @@ footer{background:var(--z50);border-top:1px solid var(--z100);padding:8px 17px;
   const latV=g('latV'),fSt=g('fSt'),scr=g('scr'),spot=g('spot');
   let t0=0;
   let currentSelections = {};
+  let typingInterval = null;
 
   window.addEventListener('mousemove',e=>{
     spot.style.setProperty('--mx',e.clientX+'px');
@@ -693,6 +690,22 @@ footer{background:var(--z50);border-top:1px solid var(--z100);padding:8px 17px;
     },spd);
   }
   
+  function startTypingAnim(el, baseTxt) {
+    if(typingInterval) clearInterval(typingInterval);
+    let dots = 0;
+    el.textContent = baseTxt;
+    typingInterval = setInterval(() => {
+      dots = (dots + 1) % 4;
+      el.textContent = baseTxt + '.'.repeat(dots);
+    }, 400);
+  }
+  function stopTypingAnim() {
+    if(typingInterval) {
+      clearInterval(typingInterval);
+      typingInterval = null;
+    }
+  }
+  
   const termLines = [
     "[BOOTING AI ENGINE...]",
     "[ANALYZING USER INTENT...]",
@@ -720,15 +733,18 @@ footer{background:var(--z50);border-top:1px solid var(--z100);padding:8px 17px;
     const p=pi.value.trim();
     if(!p){aErr.textContent='Please enter a prompt first.';aErr.style.display='block';return;}
     aErr.style.display='none';
-    aBtn.disabled=true;aTxt.textContent='Analyzing...';
+    aBtn.disabled=true;
+    startTypingAnim(aTxt, 'AI is typing');
     t0=Date.now();status('Analyzing...',true);
     currentSelections = {};
-    vscode.postMessage({command:'nextStage',prompt:p,model:g('selModel').value, selections:{}});
+    const selectedModel = document.getElementById('selModel').value;
+    vscode.postMessage({command:'nextStage',prompt:p,model:selectedModel, selections:{}});
   });
 
   bBtn.addEventListener('click',()=>{
     bErr.style.display='none';
-    bBtn.disabled=true;bTxt.textContent='Processing...';
+    bBtn.disabled=true;
+    startTypingAnim(bTxt, 'AI is typing');
     t0=Date.now();status('Processing...',true);
     
     const dynSels = document.querySelectorAll('#dynamicQuestions select');
@@ -736,8 +752,9 @@ footer{background:var(--z50);border-top:1px solid var(--z100);padding:8px 17px;
       currentSelections[s.dataset.q] = s.value;
     });
 
+    const selectedModel = document.getElementById('selModel').value;
     vscode.postMessage({command:'nextStage',prompt:pi.value.trim(),
-      model:g('selModel').value,
+      model:selectedModel,
       selections: currentSelections});
   });
 
@@ -783,6 +800,7 @@ footer{background:var(--z50);border-top:1px solid var(--z100);padding:8px 17px;
     switch(m.command){
       case 'stageStart': break;
       case 'stageResult':{
+        stopTypingAnim();
         latV.textContent=(Date.now()-t0)+'ms';
         aBtn.disabled=false;aTxt.textContent='Analyze Intent';
         bBtn.disabled=false;bTxt.textContent='Next';
@@ -862,6 +880,7 @@ footer{background:var(--z50);border-top:1px solid var(--z100);padding:8px 17px;
         break;
       }
       case 'stageError':
+        stopTypingAnim();
         latV.textContent=(Date.now()-t0)+'ms';
         aBtn.disabled=false;aTxt.textContent='Analyze Intent';
         bBtn.disabled=false;bTxt.textContent='Next';
@@ -869,6 +888,7 @@ footer{background:var(--z50);border-top:1px solid var(--z100);padding:8px 17px;
         bErr.textContent='Error: '+m.message;bErr.style.display='block';
         status('Error',false);break;
       case 'stageFinal':{
+        stopTypingAnim();
         latV.textContent=(Date.now()-t0)+'ms';
         aBtn.disabled=false;aTxt.textContent='Analyze Intent';
         bBtn.disabled=false;bTxt.textContent='Next';
@@ -890,7 +910,7 @@ footer{background:var(--z50);border-top:1px solid var(--z100);padding:8px 17px;
         pi.value=m.prompt||'';
         chC.textContent='ch '+(m.prompt||'').length;
         lnC.textContent='ln '+(m.prompt||'').split('\\n').length;break;
-      case 'reset': rstBtn.click();break;
+      case 'reset': stopTypingAnim(); rstBtn.click();break;
     }
   });
 

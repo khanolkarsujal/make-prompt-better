@@ -6,11 +6,12 @@ class Question(BaseModel):
     title: str
     why_it_matters: Optional[str] = None
     options: List[str]
-    category: str
+    category: Optional[str] = None
 
 class Suggestions(BaseModel):
     questions: List[Question]
     estimated_complexity: str
+    fix_options: List[str] = []
 
 class AnalyzeResponse(BaseModel):
     intent: Dict[str, Any]
@@ -30,4 +31,4 @@ class StageState(BaseModel):
     estimated_complexity: Optional[str] = None
     final_prompt: Optional[str] = None
     selections: Optional[Dict[str, str]] = None
-    tags: Optional[Dict[str, Any]] = None
+    fix_options: List[str] = []

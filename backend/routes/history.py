@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Dict
-from models.history import get_history, add_to_history, toggle_favorite, delete_from_history
+from ..models.history import get_history, add_to_history, toggle_favorite, delete_from_history
 
 router = APIRouter()
 
